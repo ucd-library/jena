@@ -47,6 +47,7 @@ import org.apache.jena.fuseki.FusekiConfigException;
 import org.apache.jena.fuseki.auth.Auth;
 import org.apache.jena.fuseki.auth.AuthPolicy;
 import org.apache.jena.fuseki.server.*;
+import org.apache.jena.fuseki.server.eventbus.DatasetChangesEventBus;
 import org.apache.jena.fuseki.servlets.ActionService;
 import org.apache.jena.graph.Node;
 import org.apache.jena.query.Dataset;
@@ -640,6 +641,7 @@ public class FusekiConfig {
             // Assemblerutils.readAssemblerFile < FusekiServer.parseConfigFile.
             //AssemblerUtils.addRegistered(datasetDesc.getModel());
             ds = (Dataset)Assembler.general.open(datasetDesc);
+            ds = DatasetChangesEventBus.wrap(ds);
         }
         // Some kind of check that it is "the same" dataset.
         // It can be different if two descriptions in different files have the same URI.
