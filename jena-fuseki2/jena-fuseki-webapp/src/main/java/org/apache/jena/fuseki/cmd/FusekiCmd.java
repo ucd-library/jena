@@ -20,6 +20,7 @@ package org.apache.jena.fuseki.cmd;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import arq.cmdline.CmdARQ;
 import arq.cmdline.ModDatasetAssembler;
@@ -31,7 +32,6 @@ import org.apache.jena.fuseki.Fuseki;
 import org.apache.jena.fuseki.FusekiException;
 import org.apache.jena.fuseki.jetty.JettyServerConfig;
 import org.apache.jena.fuseki.mgt.Template;
-import org.apache.jena.fuseki.server.FusekiInitialConfig;
 import org.apache.jena.fuseki.system.FusekiLogging;
 import org.apache.jena.fuseki.webapp.FusekiEnv;
 import org.apache.jena.fuseki.webapp.FusekiServerListener;
@@ -41,6 +41,7 @@ import org.apache.jena.query.Dataset;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFLanguages;
+import org.apache.jena.riot.RiotException;
 import org.apache.jena.sparql.core.DatasetGraphFactory;
 import org.apache.jena.sys.JenaSystem;
 import org.apache.jena.system.Txn;
@@ -235,7 +236,6 @@ public class FusekiCmd {
             cmdLineConfig.allowUpdate = contains(argUpdate);
 
             if ( contains(argMem) ) {
-                log.info("Dataset: in-memory");
                 cmdLineConfig.datasetDescription = "in-memory";
                 // Only one setup should be called by the test above but to be safe
                 // and in case of future changes, clear the configuration.
@@ -246,21 +246,29 @@ public class FusekiCmd {
             }
 
             if ( contains(argFile) ) {
-                String filename = getValue(argFile);
-                log.info("Dataset: in-memory: load file: " + filename);
-                String pathname = filename;
-                if ( filename.startsWith("file:") )
-                    pathname = filename.substring("file:".length());
-                if ( !FileOps.exists(filename) )
-                    throw new CmdException("File not found: " + filename);
-                cmdLineConfig.datasetDescription = "file: "+filename;
+                List<String> filenames = getValues(argFile);
                 // Directly populate the dataset.
                 cmdLineConfig.reset();
                 cmdLineConfig.dsg = DatasetGraphFactory.createTxnMem();
-                Lang language = RDFLanguages.filenameToLang(filename);
-                if ( language == null )
-                    throw new CmdException("Can't guess language for file: " + filename);
-                Txn.executeWrite(cmdLineConfig.dsg, ()->RDFDataMgr.read(cmdLineConfig.dsg, filename));
+                cmdLineConfig.datasetDescription = "in-memory, with files loaded";
+                for ( String filename : filenames ) {
+                    String pathname = filename;
+                    if ( filename.startsWith("file:") )
+                        pathname = filename.substring("file:".length());
+                    if ( !FileOps.exists(filename) )
+                        throw new CmdException("File not found: " + filename);
+                    Lang language = RDFLanguages.filenameToLang(filename);
+                    if ( language == null )
+                        throw new CmdException("Can't guess language for file: " + filename);
+                    Txn.executeWrite(cmdLineConfig.dsg, ()->{
+                        try {
+                            log.info("Dataset: in-memory: load file: " + filename);
+                            RDFDataMgr.read(cmdLineConfig.dsg, filename);
+                        } catch (RiotException ex) {
+                            throw new CmdException("Failed to load file: " + filename);
+                        }
+                    });
+                }
             }
 
             if ( contains(argMemTDB) ) {
@@ -284,7 +292,6 @@ public class FusekiCmd {
 
             // Otherwise
             if ( contains(assemblerDescDecl) ) {
-                log.info("Dataset from assembler");
                 cmdLineConfig.datasetDescription = "Assembler: "+ modDataset.getAssemblerFile();
                 // Need to add service details.
                 Dataset ds = modDataset.createDataset();
@@ -365,7 +372,7 @@ public class FusekiCmd {
         }
     }
 
-    /** Configure and run a Fuseki server - this function does not return except for error starting up*/
+    /** Configure and run a Fuseki server - this function does not return except for error starting up */
     public static void runFuseki(FusekiInitialConfig serverConfig, JettyServerConfig jettyConfig) {
         FusekiServerListener.initialSetup = serverConfig;
         JettyFusekiWebapp.initializeServer(jettyConfig);

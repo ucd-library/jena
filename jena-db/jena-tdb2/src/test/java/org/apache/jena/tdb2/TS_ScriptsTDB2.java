@@ -16,11 +16,14 @@
  * limitations under the License.
  */
 
-package org.apache.jena.shacl.testing;
+package org.apache.jena.tdb2;
 
-public class CmdTest {
-    public static void main(String...a) {
-        for ( String fn : a )
-            RunManifest.runTest(fn);
-    }
-}
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
+
+@RunWith(Suite.class)
+@Suite.SuiteClasses( {
+    TestScriptsTDB2.class
+})
+
+public class TS_ScriptsTDB2 {}

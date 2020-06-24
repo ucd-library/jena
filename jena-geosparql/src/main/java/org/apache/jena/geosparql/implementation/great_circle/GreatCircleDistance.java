@@ -22,7 +22,10 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Point;
 
 /**
- *
+ * Great Circle distance uses Haversine formula. There are situations where the
+ * Vincenty formula is more accurate. However, the implemented Vincenty formula
+ * has errors, see Test 'testVincentyFormula_Distance8' and
+ * 'testVincentyFormula_Distance8'.
  *
  */
 public class GreatCircleDistance {
@@ -100,7 +103,7 @@ public class GreatCircleDistance {
         double b = Math.pow(Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(diffLonRad), 2);
 
         double c = Math.sqrt(a + b);
-        double d = Math.sin(lat1Rad) * Math.sin(lat2Rad) + Math.cos(lat1Rad) * Math.cos(lat2Rad) * Math.cos(diffLonRad);
+        double d = Math.abs(Math.sin(lat1Rad) * Math.sin(lat2Rad) + Math.cos(lat1Rad) * Math.cos(lat2Rad) * Math.cos(diffLonRad));
 
         double e = Math.atan(c / d);
 
@@ -136,7 +139,7 @@ public class GreatCircleDistance {
      * @return Distance in metres.
      */
     public static final double haversineFormula(Point point1, Point point2) {
-        //Based on Vincenty formula: https://en.wikipedia.org/wiki/Great-circle_distance
+        //Based on Haversine formula: https://en.wikipedia.org/wiki/Great-circle_distance
         double lat1 = point1.getY();
         double lon1 = point1.getX();
 
@@ -154,7 +157,7 @@ public class GreatCircleDistance {
      * @return Distance in metres.
      */
     public static final double haversineFormula(Coordinate coord1, Coordinate coord2) {
-        //Based on Vincenty formula: https://en.wikipedia.org/wiki/Great-circle_distance
+        //Based on Haversine formula: https://en.wikipedia.org/wiki/Great-circle_distance
         double lat1 = coord1.getY();
         double lon1 = coord1.getX();
 
@@ -174,7 +177,7 @@ public class GreatCircleDistance {
      */
     public static final double haversineFormula(double lat1, double lon1, double lat2, double lon2) {
         //Based on Haversine formula: https://www.movable-type.co.uk/scripts/latlong.html
-        //Apparently there are inaccurcies for distances of points on opposite sides of the sphere so prefer Vincenty formula.
+        //Apparently there are inaccurcies for distances of points on opposite sides of the sphere.
         double lat1Rad = Math.toRadians(lat1);
         double lat2Rad = Math.toRadians(lat2);
 
