@@ -18,7 +18,7 @@ steps:
 
   - name: 'gcr.io/cloud-builders/docker'
     entrypoint: "sh"
-    args: [ '-c', 'build -t docker.io/ucdlib/jena-fuseki-eb:latest .' ]
+    args: [ '-c', 'docker build -t docker.io/ucdlib/jena-fuseki-eb:latest .' ]
 
   - name: gcr.io/cloud-builders/docker
     entrypoint: "sh"
