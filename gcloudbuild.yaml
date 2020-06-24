@@ -17,8 +17,9 @@ steps:
     args: ["-c", "docker login --username=libosdev --password-stdin < pass.txt"]
 
   - name: 'gcr.io/cloud-builders/docker'
-    args: [ 'build', '-t', 'ucdlib/jena-fuseki', '.' ]
+    entrypoint: "sh"
+    args: [ '-c' 'build -t docker.io/ucdlib/jena-fuseki-eb:latest .' ]
 
   - name: gcr.io/cloud-builders/docker
     entrypoint: "sh"
-    args: ["-c", "docker push ucdlib/jena-fuseki"]
+    args: ["-c", "docker push ucdlib/jena-fuseki-eb:latest"]
