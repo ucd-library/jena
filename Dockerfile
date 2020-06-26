@@ -91,4 +91,4 @@ WORKDIR $FUSEKI_HOME
 EXPOSE 3030
 # ENTRYPOINT ["/docker-entrypoint.sh"]
 # CMD ["/jena-fuseki/fuseki-server"]
-ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["/docker-entrypoint.sh"]
