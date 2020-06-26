@@ -1,15 +1,36 @@
+ARG FUSEKI_VERSION=3.16.0
+
 FROM maven:3-openjdk-8 as build
 
+ARG FUSEKI_VERSION
 WORKDIR /tmp
+
+# need to speed up builds using this: https://medium.com/@nieldw/caching-maven-dependencies-in-a-docker-build-dca6ca7ad612
+# COPY ./pom.xml ./
+# COPY ./pom.xml ./
+# RUN mkdir -p /tmp/jena-fuseki2/apache-jena-fuseki
+# RUN mkdir -p /tmp/jena-fuseki2/jena-fuseki-core
+# COPY ./jena-fuseki2/apache-jena-fuseki/pom.xml ./jena-fuseki2/apache-jena-fuseki/pom.xml
+# COPY ./jena-fuseki2/jena-fuseki-core/pom.xml ./jena-fuseki2/jena-fuseki-core/pom.xml
+
+# RUN cd /tmp; mvn dependency:go-offline
+# RUN cd /tmp/jena-fuseki2/apache-jena-fuseki; mvn dependency:go-offline
+# RUN cd /tmp/jena-fuseki2/jena-fuseki-core; mvn dependency:go-offline
+
 COPY . ./
 
 WORKDIR /tmp/jena-fuseki2/apache-jena-fuseki
-
 RUN mvn package -Dmaven.test.skip=true
+
+# Additionally we want to cut the following lib for eventbus addons
+# This jar contains the additional classes that won't be in maven central
+WORKDIR /tmp/jena-fuseki2/jena-fuseki-core
+RUN mvn package -Dmaven.test.skip=true -Drat.skip=true
 
 FROM openjdk:11-jre-slim-buster
 LABEL AUTHOR "Justin Merz <jrmerz@ucdavis.edu>"
 
+ARG FUSEKI_VERSION
 ENV LANG C.UTF-8
 RUN set -eux; \
     apt-get update; \
@@ -17,9 +38,6 @@ RUN set -eux; \
        bash curl ca-certificates findutils coreutils pwgen \
     ; \
     rm -rf /var/lib/apt/lists/*
-
-
-ENV FUSEKI_VERSION 3.15.0
 
 LABEL org.opencontainers.image.url https://github.com/stain/jena-docker/tree/master/jena-fuseki
 LABEL org.opencontainers.image.source https://github.com/stain/jena-docker/
@@ -36,13 +54,15 @@ ENV FUSEKI_BASE /fuseki
 
 # Installation folder
 ENV FUSEKI_HOME /jena-fuseki
-RUN mkdir $FUSEKI_HOME
+RUN mkdir -p $FUSEKI_HOME/lib
 WORKDIR $FUSEKI_HOME
 
-COPY --from=build /tmp/jena-fuseki2/apache-jena-fuseki/target/apache-jena-fuseki-3.16.0-SNAPSHOT.tar.gz apache-jena-fuseki-3.16.0-SNAPSHOT.tar.gz
-RUN tar zxf apache-jena-fuseki-3.16.0-SNAPSHOT.tar.gz
-RUN mv apache-jena-fuseki-3.16.0-SNAPSHOT/* .
-RUN rm -rf apache-jena-fuseki-3.16.0-SNAPSHOT*
+COPY --from=build /tmp/jena-fuseki2/apache-jena-fuseki/target/apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT.tar.gz apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT.tar.gz
+COPY --from=build /tmp/jena-fuseki2/jena-fuseki-core/target/jena-fuseki-core-${FUSEKI_VERSION}-SNAPSHOT.jar lib/jena-fuseki-core-${FUSEKI_VERSION}-SNAPSHOT.jar
+
+RUN tar zxf apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT.tar.gz
+RUN mv apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT/* .
+RUN rm -rf apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT*
 RUN rm -rf fuseki.war && chmod 755 fuseki-server
 
 # Test the install by testing it's ping resource. 20s sleep because Docker Hub.
@@ -69,5 +89,6 @@ RUN chmod 755 $FUSEKI_HOME/load.sh $FUSEKI_HOME/tdbloader
 # # Where we start our server from
 WORKDIR $FUSEKI_HOME
 EXPOSE 3030
+# ENTRYPOINT ["/docker-entrypoint.sh"]
+# CMD ["/jena-fuseki/fuseki-server"]
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["/jena-fuseki/fuseki-server"]
