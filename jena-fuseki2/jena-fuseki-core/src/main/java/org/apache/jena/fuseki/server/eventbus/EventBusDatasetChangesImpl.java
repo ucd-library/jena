@@ -26,11 +26,11 @@ public class EventBusDatasetChangesImpl implements DatasetChanges {
 
 	@Override
 	public void finish() {
-		DatasetChangesEventBus.emit(new DatasetChangesEvent("start", this.ds));
+		DatasetChangesEventBus.emit(new DatasetChangesEvent("finish", this.ds));
 	}
 
 	@Override
 	public void reset() {
-		DatasetChangesEventBus.emit(new DatasetChangesEvent("start", this.ds));
+		DatasetChangesEventBus.emit(new DatasetChangesEvent("reset", this.ds));
 	}
 }
