@@ -27,7 +27,7 @@ RUN mvn package -Dmaven.test.skip=true
 WORKDIR /tmp/jena-fuseki2/jena-fuseki-core
 RUN mvn package -Dmaven.test.skip=true -Drat.skip=true
 
-FROM openjdk:14.0-jdk-slim-buster
+FROM openjdk:11-jre-slim-buster
 LABEL AUTHOR "Justin Merz <jrmerz@ucdavis.edu>"
 
 ARG FUSEKI_VERSION
