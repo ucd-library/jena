@@ -33,14 +33,14 @@ import org.apache.jena.sparql.ARQConstants ;
 import org.junit.Test ;
 
 public class TestTokenizer {
-    // WORKERS
+
     private static Tokenizer tokenizer(String string) {
         return tokenizer(string, false) ;
     }
 
     private static Tokenizer tokenizer(String string, boolean lineMode) {
         PeekReader r = PeekReader.readString(string) ;
-        Tokenizer tokenizer = new TokenizerText(r, lineMode) ;
+        Tokenizer tokenizer = TokenizerText.create().source(r).lineMode(lineMode).build();
         return tokenizer ;
     }
 
@@ -912,7 +912,7 @@ public class TestTokenizer {
     @Test
     public void tokenizer_charset_1() {
         ByteArrayInputStream in = bytes("'abc'") ;
-        Tokenizer tokenizer = TokenizerFactory.makeTokenizerASCII(in) ;
+        Tokenizer tokenizer = TokenizerText.create().asciiOnly(true).source(in).build() ;
         Token t = tokenizer.next() ;
         assertFalse(tokenizer.hasNext()) ;
     }
@@ -920,7 +920,7 @@ public class TestTokenizer {
     @Test(expected = RiotParseException.class)
     public void tokenizer_charset_2() {
         ByteArrayInputStream in = bytes("'abcdé'") ;
-        Tokenizer tokenizer = TokenizerFactory.makeTokenizerASCII(in) ;
+        Tokenizer tokenizer = TokenizerText.create().asciiOnly(true).source(in).build() ;
         Token t = tokenizer.next() ;
         assertFalse(tokenizer.hasNext()) ;
     }
@@ -928,7 +928,7 @@ public class TestTokenizer {
     @Test(expected = RiotParseException.class)
     public void tokenizer_charset_3() {
         ByteArrayInputStream in = bytes("<http://example/abcdé>") ;
-        Tokenizer tokenizer = TokenizerFactory.makeTokenizerASCII(in) ;
+        Tokenizer tokenizer = TokenizerText.create().asciiOnly(true).source(in).build() ;
         Token t = tokenizer.next() ;
         assertFalse(tokenizer.hasNext()) ;
     }
@@ -937,7 +937,7 @@ public class TestTokenizer {
     public void tokenizer_BOM_1() {
         // BOM
         ByteArrayInputStream in = bytes("\uFEFF'abc'") ;
-        Tokenizer tokenizer = TokenizerFactory.makeTokenizerUTF8(in) ;
+        Tokenizer tokenizer = TokenizerText.create().source(in).build() ;
         assertTrue(tokenizer.hasNext()) ;
         Token token = tokenizer.next() ;
         assertNotNull(token) ;
@@ -945,7 +945,7 @@ public class TestTokenizer {
         assertEquals("abc", token.getImage()) ;
         assertFalse(tokenizer.hasNext()) ;
     }
-
+    
     // First symbol from the stream.
     private static void testSymbol(String string, TokenType expected) {
         Tokenizer tokenizer = tokenizeAndTestFirst(string, expected, null) ;
@@ -1109,7 +1109,7 @@ public class TestTokenizer {
 
     @Test
     public void token_rdf_star_1() {
-        Tokenizer tokenizer = tokenizer("<<>>", true) ;
+        Tokenizer tokenizer = tokenizer("<<>>") ;
         testNextToken(tokenizer, TokenType.LT2) ;
         testNextToken(tokenizer, TokenType.GT2) ;
         assertFalse(tokenizer.hasNext()) ;
@@ -1117,7 +1117,7 @@ public class TestTokenizer {
 
     @Test
     public void token_rdf_star_2() {
-        Tokenizer tokenizer = tokenizer("<< >>", true) ;
+        Tokenizer tokenizer = tokenizer("<< >>") ;
         testNextToken(tokenizer, TokenType.LT2) ;
         testNextToken(tokenizer, TokenType.GT2) ;
         assertFalse(tokenizer.hasNext()) ;
@@ -1125,7 +1125,7 @@ public class TestTokenizer {
 
     @Test
     public void token_rdf_star_3() {
-        Tokenizer tokenizer = tokenizer("<<:s x:p 123>> :q ", true) ;
+        Tokenizer tokenizer = tokenizer("<<:s x:p 123>> :q ") ;
         testNextToken(tokenizer, TokenType.LT2) ;
         testNextToken(tokenizer, TokenType.PREFIXED_NAME, "", "s") ;
         testNextToken(tokenizer, TokenType.PREFIXED_NAME, "x", "p") ;
@@ -1137,7 +1137,7 @@ public class TestTokenizer {
 
     @Test
     public void token_rdf_star_4() {
-        Tokenizer tokenizer = tokenizer("<<<>>>", true) ;
+        Tokenizer tokenizer = tokenizer("<<<>>>") ;
         testNextToken(tokenizer, TokenType.LT2) ;
         Token t = testNextToken(tokenizer, TokenType.IRI) ;
         assertEquals("", t.getImage());
