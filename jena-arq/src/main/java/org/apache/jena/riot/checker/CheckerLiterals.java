@@ -29,10 +29,8 @@ import org.apache.jena.sparql.graph.NodeConst ;
 import org.apache.jena.util.SplitIRI;
 
 public class CheckerLiterals implements NodeChecker {
-    // A flag to enable the test suite to read bad data.
-    public static boolean WarnOnBadLiterals = true ;
 
-    private ErrorHandler  handler ;
+    private ErrorHandler handler ;
 
     public CheckerLiterals(ErrorHandler handler) {
         this.handler = handler ;
@@ -64,13 +62,9 @@ public class CheckerLiterals implements NodeChecker {
 
     public static boolean checkLiteral(String lexicalForm, String lang, RDFDatatype datatype, ErrorHandler handler,
                                        long line, long col) {
-        if ( !WarnOnBadLiterals )
-            return true ;
-
         boolean hasLang = lang != null && !lang.equals("") ;
         if ( !hasLang ) {
-            // Datatype check (and RDF 1.0 simpl literals are always well
-            // formed)
+            // Datatype check (and RDF 1.0 simple literals are always well formed)
             if ( datatype != null )
                 return validateByDatatype(lexicalForm, datatype, handler, line, col) ;
             return true ;
@@ -96,10 +90,10 @@ public class CheckerLiterals implements NodeChecker {
         }
         return true ;
     }
-    
+
     // Whitespace.
     // XSD allows whitespace before and after the lexical forms of a literal but not insiode.
-    // Jena handles this correctly. 
+    // Jena handles this correctly.
 
     protected static boolean validateByDatatype(String lexicalForm, RDFDatatype datatype, ErrorHandler handler, long line, long col) {
 //        if ( SysRIOT.StrictXSDLexicialForms )
@@ -129,7 +123,7 @@ public class CheckerLiterals implements NodeChecker {
         }
         return true ;
     }
-    
+
     private static String xsdDatatypeName(RDFDatatype datatype) {
         return "XSD "+SplitIRI.localname(datatype.getURI());
     }

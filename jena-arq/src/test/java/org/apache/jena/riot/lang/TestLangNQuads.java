@@ -18,6 +18,8 @@
 
 package org.apache.jena.riot.lang;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.jena.graph.NodeFactory ;
 import org.apache.jena.riot.ErrorHandlerTestLib.ExFatal ;
 import org.apache.jena.riot.Lang ;
@@ -26,7 +28,7 @@ import org.junit.Test ;
 
 /** Test of syntax by a quads parser (does not include node validitiy checking) */ 
 
-public class TestLangNQuads extends TestLangNTuples
+public class TestLangNQuads extends AbstractTestLangNTuples
 {
     @Override
     protected Lang getLang() {

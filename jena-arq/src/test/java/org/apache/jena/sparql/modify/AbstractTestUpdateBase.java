@@ -18,17 +18,16 @@
 
 package org.apache.jena.sparql.modify ;
 
-import org.apache.jena.atlas.junit.BaseTest ;
+import org.apache.jena.arq.ARQTestSuite;
 import org.apache.jena.graph.Graph ;
 import org.apache.jena.graph.GraphUtil ;
 import org.apache.jena.graph.Node ;
 import org.apache.jena.graph.Triple ;
-import org.apache.jena.sparql.ARQTestSuite ;
 import org.apache.jena.sparql.core.DatasetGraph ;
 import org.apache.jena.sparql.graph.GraphFactory ;
 import org.apache.jena.update.UpdateAction ;
 
-public abstract class AbstractTestUpdateBase extends BaseTest {
+public abstract class AbstractTestUpdateBase {
     protected abstract DatasetGraph getEmptyDatasetGraph() ;
 
     protected void defaultGraphData(DatasetGraph gStore, Graph data) {

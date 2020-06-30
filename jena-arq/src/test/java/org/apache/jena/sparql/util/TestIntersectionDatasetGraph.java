@@ -19,13 +19,15 @@
 package org.apache.jena.sparql.util;
 
 import static org.apache.jena.sparql.sse.SSE.parseGraph;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.apache.jena.graph.*;
 import org.apache.jena.sparql.core.DatasetGraph;
 import org.apache.jena.sparql.core.DatasetGraphFactory;
 import org.junit.Test;
 
-public class TestIntersectionDatasetGraph extends TestDyadicDatasetGraph {
+public class TestIntersectionDatasetGraph extends AbstractTestDyadicDatasetGraph {
 
     @Override
     public IntersectionDatasetGraph testInstance(DatasetGraph left, DatasetGraph right, Context c) {

@@ -17,6 +17,9 @@
  */
 package org.apache.jena.riot.writer;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringReader;
@@ -32,7 +35,6 @@ import com.github.jsonldjava.utils.JsonUtils;
 
 import org.apache.jena.atlas.json.JsonObject;
 import org.apache.jena.atlas.json.JsonString;
-import org.apache.jena.atlas.junit.BaseTest;
 import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.rdf.model.*;
 import org.apache.jena.riot.JsonLDWriteContext;
@@ -47,7 +49,7 @@ import org.apache.jena.vocabulary.RDF;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
-public class TestJsonLDWriter extends BaseTest {
+public class TestJsonLDWriter {
 
     /**
      * Checks that JSON-LD RDFFormats supposed to be pretty are pretty
@@ -248,9 +250,10 @@ public class TestJsonLDWriter extends BaseTest {
     /**
      * Checks that one can pass a context defined by its URI
      * 
-     * -- well NO, this doesn't work
+     * -- well NO, this doesn't work in a test setup.
      */
-    @Test public final void testContextByUri() {
+    //@Test 
+    public final void testContextByUri() {
         Model m = ModelFactory.createDefaultModel();
         String ns = "http://schema.org/";
         Resource s = m.createResource();

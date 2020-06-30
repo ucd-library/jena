@@ -18,12 +18,14 @@
 
 package org.apache.jena.query.text;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.List ;
 
 import org.apache.jena.atlas.iterator.Iter ;
-import org.apache.jena.atlas.junit.BaseTest ;
+import org.apache.jena.atlas.junit.AssertExtra ;
 import org.apache.jena.atlas.lib.StrUtils ;
 import org.apache.jena.query.* ;
 import org.apache.jena.rdf.model.Model ;
@@ -37,7 +39,7 @@ import org.apache.lucene.store.Directory ;
 import org.junit.Test ;
 
 /** Text dataset tests using TDB1 non-transactionally, including context unionDefaultGraph */
-public class TestTextNonTxnTDB1 extends BaseTest
+public class TestTextNonTxnTDB1 extends AssertExtra
 {
     private static Dataset create() {
         Dataset ds1 = TDBFactory.createDataset() ;

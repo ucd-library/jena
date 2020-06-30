@@ -18,13 +18,18 @@
 
 package org.apache.jena.sparql.util;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import java.io.StringReader ;
 import java.util.Arrays ;
 import java.util.Iterator ;
 import java.util.List ;
 
 import org.apache.jena.atlas.iterator.Iter ;
-import org.apache.jena.atlas.junit.BaseTest ;
+import org.apache.jena.atlas.junit.AssertExtra ;
 import org.apache.jena.datatypes.xsd.XSDDatatype ;
 import org.apache.jena.graph.* ;
 import org.apache.jena.rdf.model.Model ;
@@ -39,7 +44,7 @@ import org.apache.jena.vocabulary.RDF ;
 import org.junit.Test ;
 
 /** Test the graph-level RDF list support used in SPARQL */
-public class TestList extends BaseTest
+public class TestList
 {
     private GNode emptyList = parse(listStr_1) ; 
     private GNode list4 = parse(listStr_2) ;
@@ -245,7 +250,7 @@ public class TestList extends BaseTest
     
     private static void check(List<Node> z, Node...expected) {
         List<Node> x = Arrays.asList(expected) ;
-        assertEqualsUnordered(x, z);
+        AssertExtra.assertEqualsUnordered(x, z);
     }
     
 }
