@@ -19,12 +19,25 @@ WORKDIR /tmp
 
 COPY . ./
 
-WORKDIR /tmp/jena-fuseki2/apache-jena-fuseki
-RUN mvn package -Dmaven.test.skip=true
-
 # Additionally we want to cut the following lib for eventbus addons
 # This jar contains the additional classes that won't be in maven central
-WORKDIR /tmp/jena-fuseki2/jena-fuseki-core
+# WORKDIR /tmp/jena-fuseki2/jena-fuseki-core
+# RUN mvn clean
+# RUN mvn package -Dmaven.test.skip=true -Drat.skip=true
+# RUN mvn install -Drat.skip=true -Dmaven.test.skip=true
+
+# WORKDIR /tmp/jena-fuseki2/jena-fuseki-webapp
+# RUN mvn clean
+# RUN mvn package -Dmaven.test.skip=true -Drat.skip=true
+# RUN mvn install -Drat.skip=true -Dmaven.test.skip=true
+
+# WORKDIR /tmp/jena-fuseki2/jena-fuseki-fulljar
+# RUN mvn clean
+# RUN mvn package -Dmaven.test.skip=true -Drat.skip=true
+# RUN mvn install -Drat.skip=true -Dmaven.test.skip=true
+
+WORKDIR /tmp/jena-fuseki2
+RUN mvn clean
 RUN mvn package -Dmaven.test.skip=true -Drat.skip=true
 
 FROM openjdk:14.0-jdk-slim-buster
