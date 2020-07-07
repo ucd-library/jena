@@ -3,7 +3,6 @@ ARG FUSEKI_VERSION=3.16.0
 FROM maven:3-openjdk-8 as build
 
 ARG FUSEKI_VERSION
-WORKDIR /tmp
 
 # need to speed up builds using this: https://medium.com/@nieldw/caching-maven-dependencies-in-a-docker-build-dca6ca7ad612
 # COPY ./pom.xml ./
@@ -13,32 +12,187 @@ WORKDIR /tmp
 # COPY ./jena-fuseki2/apache-jena-fuseki/pom.xml ./jena-fuseki2/apache-jena-fuseki/pom.xml
 # COPY ./jena-fuseki2/jena-fuseki-core/pom.xml ./jena-fuseki2/jena-fuseki-core/pom.xml
 
-# RUN cd /tmp; mvn dependency:go-offline
-# RUN cd /tmp/jena-fuseki2/apache-jena-fuseki; mvn dependency:go-offline
-# RUN cd /tmp/jena-fuseki2/jena-fuseki-core; mvn dependency:go-offline
+WORKDIR /tmp/jena-fuseki2
+
+RUN mkdir ./jena-fuseki-core
+COPY ./jena-fuseki2/jena-fuseki-core/pom.xml ./jena-fuseki-core/pom.xml 
+
+RUN mkdir ./jena-fuseki-access
+COPY ./jena-fuseki2/jena-fuseki-access/pom.xml ./jena-fuseki-access/pom.xml 
+
+RUN mkdir ./jena-fuseki-main
+COPY ./jena-fuseki2/jena-fuseki-main/pom.xml ./jena-fuseki-main/pom.xml 
+
+RUN mkdir ./jena-fuseki-geosparql
+COPY ./jena-fuseki2/jena-fuseki-geosparql/pom.xml ./jena-fuseki-geosparql/pom.xml 
+
+RUN mkdir ./jena-fuseki-server
+COPY ./jena-fuseki2/jena-fuseki-server/pom.xml ./jena-fuseki-server/pom.xml 
+
+RUN mkdir ./jena-fuseki-webapp
+COPY ./jena-fuseki2/jena-fuseki-webapp/pom.xml ./jena-fuseki-webapp/pom.xml 
+
+RUN mkdir ./jena-fuseki-war
+COPY ./jena-fuseki2/jena-fuseki-war/pom.xml ./jena-fuseki-war/pom.xml 
+
+RUN mkdir ./jena-fuseki-fulljar
+COPY ./jena-fuseki2/jena-fuseki-fulljar/pom.xml ./jena-fuseki-fulljar/pom.xml 
+
+RUN mkdir ./apache-jena-fuseki
+COPY ./jena-fuseki2/apache-jena-fuseki/pom.xml ./apache-jena-fuseki/pom.xml 
+
+COPY ./jena-fuseki2/pom.xml ./pom.xml 
+
+WORKDIR /tmp
+
+RUN mkdir ./jena-shaded-guava
+COPY ./jena-shaded-guava/pom.xml ./jena-shaded-guava/pom.xml
+
+RUN mkdir ./jena-iri
+COPY ./jena-iri/pom.xml ./jena-iri/pom.xml
+
+RUN mkdir ./jena-base
+COPY ./jena-base/pom.xml ./jena-base/pom.xml
+
+RUN mkdir ./jena-core
+COPY ./jena-core/pom.xml ./jena-core/pom.xml
+
+RUN mkdir ./jena-permissions
+COPY ./jena-permissions/pom.xml ./jena-permissions/pom.xml
+
+RUN mkdir ./jena-arq
+COPY ./jena-arq/pom.xml ./jena-arq/pom.xml
+
+RUN mkdir ./jena-shacl
+COPY ./jena-shacl/pom.xml ./jena-shacl/pom.xml
+
+RUN mkdir ./jena-rdfconnection
+COPY ./jena-rdfconnection/pom.xml ./jena-rdfconnection/pom.xml
+
+RUN mkdir ./jena-tdb
+COPY ./jena-tdb/pom.xml ./jena-tdb/pom.xml
+
+RUN mkdir ./jena-sdb
+COPY ./jena-sdb/pom.xml ./jena-sdb/pom.xml
+
+RUN mkdir ./jena-db
+COPY ./jena-db/pom.xml ./jena-db/pom.xml
+
+RUN mkdir ./jena-db/jena-dboe-base
+COPY ./jena-db/jena-dboe-base/pom.xml ./jena-db/jena-dboe-base/pom.xml
+
+RUN mkdir ./jena-db/jena-dboe-transaction
+COPY ./jena-db/jena-dboe-transaction/pom.xml ./jena-db/jena-dboe-transaction/pom.xml
+
+RUN mkdir ./jena-db/jena-dboe-index
+COPY ./jena-db/jena-dboe-index/pom.xml ./jena-db/jena-dboe-index/pom.xml
+
+RUN mkdir ./jena-db/jena-dboe-index-test
+COPY ./jena-db/jena-dboe-index-test/pom.xml ./jena-db/jena-dboe-index-test/pom.xml
+
+RUN mkdir ./jena-db/jena-dboe-trans-data
+COPY ./jena-db/jena-dboe-trans-data/pom.xml ./jena-db/jena-dboe-trans-data/pom.xml
+
+RUN mkdir ./jena-db/jena-dboe-storage
+COPY ./jena-db/jena-dboe-storage/pom.xml ./jena-db/jena-dboe-storage/pom.xml
+
+RUN mkdir ./jena-db/jena-tdb2
+COPY ./jena-db/jena-tdb2/pom.xml ./jena-db/jena-tdb2/pom.xml
+
+RUN mkdir ./jena-jdbc
+COPY ./jena-jdbc/pom.xml ./jena-jdbc/pom.xml
+
+RUN mkdir ./jena-jdbc/jena-jdbc-core
+COPY ./jena-jdbc/jena-jdbc-core/pom.xml ./jena-jdbc/jena-jdbc-core/pom.xml
+
+RUN mkdir ./jena-jdbc/jena-jdbc-driver-remote
+COPY ./jena-jdbc/jena-jdbc-driver-remote/pom.xml ./jena-jdbc/jena-jdbc-driver-remote/pom.xml
+
+RUN mkdir ./jena-jdbc/jena-jdbc-driver-tdb
+COPY ./jena-jdbc/jena-jdbc-driver-tdb/pom.xml ./jena-jdbc/jena-jdbc-driver-tdb/pom.xml
+
+RUN mkdir ./jena-jdbc/jena-jdbc-driver-mem
+COPY ./jena-jdbc/jena-jdbc-driver-mem/pom.xml ./jena-jdbc/jena-jdbc-driver-mem/pom.xml
+
+RUN mkdir ./jena-jdbc/jena-jdbc-driver-bundle
+COPY ./jena-jdbc/jena-jdbc-driver-bundle/pom.xml ./jena-jdbc/jena-jdbc-driver-bundle/pom.xml
+
+RUN mkdir ./jena-geosparql
+COPY ./jena-geosparql/pom.xml ./jena-geosparql/pom.xml
+
+RUN mkdir ./apache-jena-libs
+COPY ./apache-jena-libs/pom.xml ./apache-jena-libs/pom.xml
+
+RUN mkdir ./jena-text
+COPY ./jena-text/pom.xml ./jena-text/pom.xml
+
+RUN mkdir ./jena-text-es
+COPY ./jena-text-es/pom.xml ./jena-text-es/pom.xml
+
+RUN mkdir ./jena-cmds
+COPY ./jena-cmds/pom.xml ./jena-cmds/pom.xml
+
+RUN mkdir ./jena-extras
+COPY ./jena-extras/pom.xml ./jena-extras/pom.xml
+
+RUN mkdir ./jena-extras/jena-querybuilder
+COPY ./jena-extras/jena-querybuilder/pom.xml ./jena-extras/jena-querybuilder/pom.xml
+
+RUN mkdir ./jena-extras/jena-commonsrdf
+COPY ./jena-extras/jena-commonsrdf/pom.xml ./jena-extras/jena-commonsrdf/pom.xml
+
+RUN mkdir ./jena-elephas
+COPY ./jena-elephas/pom.xml ./jena-elephas/pom.xml
+
+RUN mkdir ./jena-elephas/jena-elephas-io
+COPY ./jena-elephas/jena-elephas-io/pom.xml ./jena-elephas/jena-elephas-io/pom.xml
+
+RUN mkdir ./jena-elephas/jena-elephas-common
+COPY ./jena-elephas/jena-elephas-common/pom.xml ./jena-elephas/jena-elephas-common/pom.xml
+
+RUN mkdir ./jena-elephas/jena-elephas-mapreduce
+COPY ./jena-elephas/jena-elephas-mapreduce/pom.xml ./jena-elephas/jena-elephas-mapreduce/pom.xml
+
+RUN mkdir ./jena-elephas/jena-elephas-stats
+COPY ./jena-elephas/jena-elephas-stats/pom.xml ./jena-elephas/jena-elephas-stats/pom.xml
+
+RUN mkdir ./apache-jena-osgi
+COPY ./apache-jena-osgi/pom.xml ./apache-jena-osgi/pom.xml
+
+RUN mkdir ./apache-jena-osgi/jena-osgi
+COPY ./apache-jena-osgi/jena-osgi/pom.xml ./apache-jena-osgi/jena-osgi/pom.xml
+
+RUN mkdir ./apache-jena-osgi/jena-osgi-features
+COPY ./apache-jena-osgi/jena-osgi-features/pom.xml ./apache-jena-osgi/jena-osgi-features/pom.xml
+
+RUN mkdir ./jena-integration-tests
+COPY ./jena-integration-tests/pom.xml ./jena-integration-tests/pom.xml
+
+RUN mkdir ./apache-jena
+COPY ./apache-jena/pom.xml ./apache-jena/pom.xml
+
+COPY ./pom.xml ./pom.xml
+
+# RUN cd ./jena-fuseki-core; mvn dependency:go-offline
+# RUN cd ./jena-fuseki-access; mvn dependency:go-offline
+# RUN cd ./jena-fuseki-main; mvn dependency:go-offline
+# RUN cd ./jena-fuseki-geosparql; mvn dependency:go-offline
+# RUN cd ./jena-fuseki-server; mvn dependency:go-offline
+# RUN cd ./jena-fuseki-webapp; mvn dependency:go-offline
+# RUN cd ./jena-fuseki-war; mvn dependency:go-offline
+# RUN cd ./jena-fuseki-fulljar; mvn dependency:go-offline
+# RUN cd ./apache-jena-fuseki; mvn dependency:go-offline
+RUN mvn dependency:go-offline
+
 
 COPY . ./
 
-# Additionally we want to cut the following lib for eventbus addons
-# This jar contains the additional classes that won't be in maven central
-# WORKDIR /tmp/jena-fuseki2/jena-fuseki-core
+# WORKDIR /tmp/jena-fuseki2
 # RUN mvn clean
-# RUN mvn package -Dmaven.test.skip=true -Drat.skip=true
-# RUN mvn install -Drat.skip=true -Dmaven.test.skip=true
-
-# WORKDIR /tmp/jena-fuseki2/jena-fuseki-webapp
-# RUN mvn clean
-# RUN mvn package -Dmaven.test.skip=true -Drat.skip=true
-# RUN mvn install -Drat.skip=true -Dmaven.test.skip=true
-
-# WORKDIR /tmp/jena-fuseki2/jena-fuseki-fulljar
-# RUN mvn clean
-# RUN mvn package -Dmaven.test.skip=true -Drat.skip=true
-# RUN mvn install -Drat.skip=true -Dmaven.test.skip=true
-
-WORKDIR /tmp/jena-fuseki2
-RUN mvn clean
 RUN mvn package -Dmaven.test.skip=true -Drat.skip=true
+
+# end build
+# start server setup
 
 FROM openjdk:14.0-jdk-slim-buster
 LABEL AUTHOR "Justin Merz <jrmerz@ucdavis.edu>"
@@ -99,9 +253,7 @@ RUN chmod 755 $FUSEKI_HOME/load.sh $FUSEKI_HOME/tdbloader
 #VOLUME /staging
 
 
-# # Where we start our server from
+# Where we start our server from
 WORKDIR $FUSEKI_HOME
 EXPOSE 3030
-# ENTRYPOINT ["/docker-entrypoint.sh"]
-# CMD ["/jena-fuseki/fuseki-server"]
 CMD ["/docker-entrypoint.sh"]
