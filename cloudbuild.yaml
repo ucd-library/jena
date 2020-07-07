@@ -20,6 +20,14 @@ steps:
     entrypoint: "sh"
     args: [ '-c', 'docker build -t docker.io/ucdlib/jena-fuseki-eb:latest .' ]
 
-  - name: gcr.io/cloud-builders/docker
+  - name: 'gcr.io/cloud-builders/docker'
     entrypoint: "sh"
-    args: ["-c", "docker push ucdlib/jena-fuseki-eb:latest"]
+    args: [ '-c', 'docker build --cache-from docker.io/ucdlib/jena-fuseki-eb:latest -t docker.io/ucdlib/jena-fuseki-eb:$TAG_NAME .' ]
+
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: "sh"
+    args: [ '-c', 'docker tag docker.io/ucdlib/jena-fuseki-eb:$TAG_NAME docker.io/ucdlib/jena-fuseki-eb:latest' ]
+
+images: ['docker.io/ucdlib/jena-fuseki-eb:$TAG_NAME', 'docker.io/ucdlib/jena-fuseki-eb:latest']
+
+timeout: 2400s

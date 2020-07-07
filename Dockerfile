@@ -226,6 +226,7 @@ WORKDIR $FUSEKI_HOME
 
 COPY --from=build /tmp/jena-fuseki2/apache-jena-fuseki/target/apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT.tar.gz apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT.tar.gz
 COPY --from=build /tmp/jena-fuseki2/jena-fuseki-core/target/jena-fuseki-core-${FUSEKI_VERSION}-SNAPSHOT.jar lib/jena-fuseki-core-${FUSEKI_VERSION}-SNAPSHOT.jar
+COPY --from=build /tmp/jena-fuseki2/jena-fuseki-webapp/target/jena-fuseki-core-${FUSEKI_VERSION}-SNAPSHOT.jar lib/jena-fuseki-webapp-${FUSEKI_VERSION}-SNAPSHOT.jar
 
 RUN tar zxf apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT.tar.gz
 RUN mv apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT/* .
