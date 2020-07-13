@@ -15,33 +15,33 @@ ARG FUSEKI_VERSION
 WORKDIR /tmp/jena-fuseki2
 
 RUN mkdir ./jena-fuseki-core
-COPY ./jena-fuseki2/jena-fuseki-core/pom.xml ./jena-fuseki-core/pom.xml 
+COPY ./jena-fuseki2/jena-fuseki-core/pom.xml ./jena-fuseki-core/pom.xml
 
 RUN mkdir ./jena-fuseki-access
-COPY ./jena-fuseki2/jena-fuseki-access/pom.xml ./jena-fuseki-access/pom.xml 
+COPY ./jena-fuseki2/jena-fuseki-access/pom.xml ./jena-fuseki-access/pom.xml
 
 RUN mkdir ./jena-fuseki-main
-COPY ./jena-fuseki2/jena-fuseki-main/pom.xml ./jena-fuseki-main/pom.xml 
+COPY ./jena-fuseki2/jena-fuseki-main/pom.xml ./jena-fuseki-main/pom.xml
 
 RUN mkdir ./jena-fuseki-geosparql
-COPY ./jena-fuseki2/jena-fuseki-geosparql/pom.xml ./jena-fuseki-geosparql/pom.xml 
+COPY ./jena-fuseki2/jena-fuseki-geosparql/pom.xml ./jena-fuseki-geosparql/pom.xml
 
 RUN mkdir ./jena-fuseki-server
-COPY ./jena-fuseki2/jena-fuseki-server/pom.xml ./jena-fuseki-server/pom.xml 
+COPY ./jena-fuseki2/jena-fuseki-server/pom.xml ./jena-fuseki-server/pom.xml
 
 RUN mkdir ./jena-fuseki-webapp
-COPY ./jena-fuseki2/jena-fuseki-webapp/pom.xml ./jena-fuseki-webapp/pom.xml 
+COPY ./jena-fuseki2/jena-fuseki-webapp/pom.xml ./jena-fuseki-webapp/pom.xml
 
 RUN mkdir ./jena-fuseki-war
-COPY ./jena-fuseki2/jena-fuseki-war/pom.xml ./jena-fuseki-war/pom.xml 
+COPY ./jena-fuseki2/jena-fuseki-war/pom.xml ./jena-fuseki-war/pom.xml
 
 RUN mkdir ./jena-fuseki-fulljar
-COPY ./jena-fuseki2/jena-fuseki-fulljar/pom.xml ./jena-fuseki-fulljar/pom.xml 
+COPY ./jena-fuseki2/jena-fuseki-fulljar/pom.xml ./jena-fuseki-fulljar/pom.xml
 
 RUN mkdir ./apache-jena-fuseki
-COPY ./jena-fuseki2/apache-jena-fuseki/pom.xml ./apache-jena-fuseki/pom.xml 
+COPY ./jena-fuseki2/apache-jena-fuseki/pom.xml ./apache-jena-fuseki/pom.xml
 
-COPY ./jena-fuseki2/pom.xml ./pom.xml 
+COPY ./jena-fuseki2/pom.xml ./pom.xml
 
 WORKDIR /tmp
 
@@ -224,6 +224,13 @@ ENV FUSEKI_HOME /jena-fuseki
 RUN mkdir -p $FUSEKI_HOME/lib
 WORKDIR $FUSEKI_HOME
 
+# Install JENA Client Data
+COPY --from=build /tmp/apache-jena/target/apache-jena-${FUSEKI_VERSION}-SNAPSHOT.tar.gz apache-jena.tar.gz
+RUN tar zxf apache-jena.tar.gz && mkdir /jena && \
+    mv apache-jena*/* /jena && rm -f apache-jena.tar.gz && \
+    cd /jena && rm -rf *javadoc* *src* bat
+
+
 COPY --from=build /tmp/jena-fuseki2/apache-jena-fuseki/target/apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT.tar.gz apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT.tar.gz
 COPY --from=build /tmp/jena-fuseki2/jena-fuseki-core/target/jena-fuseki-core-${FUSEKI_VERSION}-SNAPSHOT.jar lib/jena-fuseki-core-${FUSEKI_VERSION}-SNAPSHOT.jar
 COPY --from=build /tmp/jena-fuseki2/jena-fuseki-webapp/target/jena-fuseki-webapp-${FUSEKI_VERSION}-SNAPSHOT.jar lib/jena-fuseki-webapp-${FUSEKI_VERSION}-SNAPSHOT.jar
@@ -236,7 +243,7 @@ RUN rm -rf fuseki.war && chmod 755 fuseki-server
 # Test the install by testing it's ping resource. 20s sleep because Docker Hub.
 RUN  $FUSEKI_HOME/fuseki-server & \
      sleep 20 && \
-     curl -sS --fail 'http://localhost:3030/$/ping' 
+     curl -sS --fail 'http://localhost:3030/$/ping'
 
 # No need to kill Fuseki as our shell will exit after curl
 
@@ -252,7 +259,7 @@ COPY --from=build /tmp/docker/load.sh $FUSEKI_HOME/
 COPY --from=build /tmp/docker/tdbloader $FUSEKI_HOME/
 RUN chmod 755 $FUSEKI_HOME/load.sh $FUSEKI_HOME/tdbloader
 #VOLUME /staging
-
+ENV PATH $PATH:/usr/local/bin:/jena/bin
 
 # Where we start our server from
 WORKDIR $FUSEKI_HOME
