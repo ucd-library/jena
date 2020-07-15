@@ -5,171 +5,54 @@ FROM maven:3-openjdk-8 as build
 ARG FUSEKI_VERSION
 
 # need to speed up builds using this: https://medium.com/@nieldw/caching-maven-dependencies-in-a-docker-build-dca6ca7ad612
-# COPY ./pom.xml ./
-# COPY ./pom.xml ./
-# RUN mkdir -p /tmp/jena-fuseki2/apache-jena-fuseki
-# RUN mkdir -p /tmp/jena-fuseki2/jena-fuseki-core
-# COPY ./jena-fuseki2/apache-jena-fuseki/pom.xml ./jena-fuseki2/apache-jena-fuseki/pom.xml
-# COPY ./jena-fuseki2/jena-fuseki-core/pom.xml ./jena-fuseki2/jena-fuseki-core/pom.xml
-
-WORKDIR /tmp/jena-fuseki2
-
-RUN mkdir ./jena-fuseki-core
-COPY ./jena-fuseki2/jena-fuseki-core/pom.xml ./jena-fuseki-core/pom.xml
-
-RUN mkdir ./jena-fuseki-access
-COPY ./jena-fuseki2/jena-fuseki-access/pom.xml ./jena-fuseki-access/pom.xml
-
-RUN mkdir ./jena-fuseki-main
-COPY ./jena-fuseki2/jena-fuseki-main/pom.xml ./jena-fuseki-main/pom.xml
-
-RUN mkdir ./jena-fuseki-geosparql
-COPY ./jena-fuseki2/jena-fuseki-geosparql/pom.xml ./jena-fuseki-geosparql/pom.xml
-
-RUN mkdir ./jena-fuseki-server
-COPY ./jena-fuseki2/jena-fuseki-server/pom.xml ./jena-fuseki-server/pom.xml
-
-RUN mkdir ./jena-fuseki-webapp
-COPY ./jena-fuseki2/jena-fuseki-webapp/pom.xml ./jena-fuseki-webapp/pom.xml
-
-RUN mkdir ./jena-fuseki-war
-COPY ./jena-fuseki2/jena-fuseki-war/pom.xml ./jena-fuseki-war/pom.xml
-
-RUN mkdir ./jena-fuseki-fulljar
-COPY ./jena-fuseki2/jena-fuseki-fulljar/pom.xml ./jena-fuseki-fulljar/pom.xml
-
-RUN mkdir ./apache-jena-fuseki
-COPY ./jena-fuseki2/apache-jena-fuseki/pom.xml ./apache-jena-fuseki/pom.xml
-
-COPY ./jena-fuseki2/pom.xml ./pom.xml
 
 WORKDIR /tmp
 
-RUN mkdir ./jena-shaded-guava
-COPY ./jena-shaded-guava/pom.xml ./jena-shaded-guava/pom.xml
+COPY ./jena-fuseki2 ./jena-fuseki2
 
-RUN mkdir ./jena-iri
-COPY ./jena-iri/pom.xml ./jena-iri/pom.xml
+COPY ./jena-shaded-guava ./jena-shaded-guava
 
-RUN mkdir ./jena-base
-COPY ./jena-base/pom.xml ./jena-base/pom.xml
+COPY ./jena-iri ./jena-iri
 
-RUN mkdir ./jena-core
-COPY ./jena-core/pom.xml ./jena-core/pom.xml
+COPY ./jena-base ./jena-base
 
-RUN mkdir ./jena-permissions
-COPY ./jena-permissions/pom.xml ./jena-permissions/pom.xml
+COPY ./jena-core ./jena-core
 
-RUN mkdir ./jena-arq
-COPY ./jena-arq/pom.xml ./jena-arq/pom.xml
+COPY ./jena-permissions ./jena-permissions
 
-RUN mkdir ./jena-shacl
-COPY ./jena-shacl/pom.xml ./jena-shacl/pom.xml
+COPY ./jena-arq ./jena-arq
 
-RUN mkdir ./jena-rdfconnection
-COPY ./jena-rdfconnection/pom.xml ./jena-rdfconnection/pom.xml
+COPY ./jena-shacl ./jena-shacl
 
-RUN mkdir ./jena-tdb
-COPY ./jena-tdb/pom.xml ./jena-tdb/pom.xml
+COPY ./jena-rdfconnection ./jena-rdfconnection
 
-RUN mkdir ./jena-sdb
-COPY ./jena-sdb/pom.xml ./jena-sdb/pom.xml
+COPY ./jena-tdb ./jena-tdb
 
-RUN mkdir ./jena-db
-COPY ./jena-db/pom.xml ./jena-db/pom.xml
+COPY ./jena-sdb ./jena-sdb
 
-RUN mkdir ./jena-db/jena-dboe-base
-COPY ./jena-db/jena-dboe-base/pom.xml ./jena-db/jena-dboe-base/pom.xml
+COPY ./jena-db ./jena-db
 
-RUN mkdir ./jena-db/jena-dboe-transaction
-COPY ./jena-db/jena-dboe-transaction/pom.xml ./jena-db/jena-dboe-transaction/pom.xml
+COPY ./jena-jdbc ./jena-jdbc
 
-RUN mkdir ./jena-db/jena-dboe-index
-COPY ./jena-db/jena-dboe-index/pom.xml ./jena-db/jena-dboe-index/pom.xml
+COPY ./jena-geosparql ./jena-geosparql
 
-RUN mkdir ./jena-db/jena-dboe-index-test
-COPY ./jena-db/jena-dboe-index-test/pom.xml ./jena-db/jena-dboe-index-test/pom.xml
+COPY ./apache-jena-libs ./apache-jena-libs
 
-RUN mkdir ./jena-db/jena-dboe-trans-data
-COPY ./jena-db/jena-dboe-trans-data/pom.xml ./jena-db/jena-dboe-trans-data/pom.xml
+COPY ./jena-text ./jena-text
 
-RUN mkdir ./jena-db/jena-dboe-storage
-COPY ./jena-db/jena-dboe-storage/pom.xml ./jena-db/jena-dboe-storage/pom.xml
+COPY ./jena-text-es ./jena-text-es
 
-RUN mkdir ./jena-db/jena-tdb2
-COPY ./jena-db/jena-tdb2/pom.xml ./jena-db/jena-tdb2/pom.xml
+COPY ./jena-cmds ./jena-cmds
 
-RUN mkdir ./jena-jdbc
-COPY ./jena-jdbc/pom.xml ./jena-jdbc/pom.xml
+COPY ./jena-extras ./jena-extras
 
-RUN mkdir ./jena-jdbc/jena-jdbc-core
-COPY ./jena-jdbc/jena-jdbc-core/pom.xml ./jena-jdbc/jena-jdbc-core/pom.xml
+COPY ./jena-elephas ./jena-elephas
 
-RUN mkdir ./jena-jdbc/jena-jdbc-driver-remote
-COPY ./jena-jdbc/jena-jdbc-driver-remote/pom.xml ./jena-jdbc/jena-jdbc-driver-remote/pom.xml
+COPY ./apache-jena-osgi ./apache-jena-osgi
 
-RUN mkdir ./jena-jdbc/jena-jdbc-driver-tdb
-COPY ./jena-jdbc/jena-jdbc-driver-tdb/pom.xml ./jena-jdbc/jena-jdbc-driver-tdb/pom.xml
+COPY ./jena-integration-tests ./jena-integration-tests
 
-RUN mkdir ./jena-jdbc/jena-jdbc-driver-mem
-COPY ./jena-jdbc/jena-jdbc-driver-mem/pom.xml ./jena-jdbc/jena-jdbc-driver-mem/pom.xml
-
-RUN mkdir ./jena-jdbc/jena-jdbc-driver-bundle
-COPY ./jena-jdbc/jena-jdbc-driver-bundle/pom.xml ./jena-jdbc/jena-jdbc-driver-bundle/pom.xml
-
-RUN mkdir ./jena-geosparql
-COPY ./jena-geosparql/pom.xml ./jena-geosparql/pom.xml
-
-RUN mkdir ./apache-jena-libs
-COPY ./apache-jena-libs/pom.xml ./apache-jena-libs/pom.xml
-
-RUN mkdir ./jena-text
-COPY ./jena-text/pom.xml ./jena-text/pom.xml
-
-RUN mkdir ./jena-text-es
-COPY ./jena-text-es/pom.xml ./jena-text-es/pom.xml
-
-RUN mkdir ./jena-cmds
-COPY ./jena-cmds/pom.xml ./jena-cmds/pom.xml
-
-RUN mkdir ./jena-extras
-COPY ./jena-extras/pom.xml ./jena-extras/pom.xml
-
-RUN mkdir ./jena-extras/jena-querybuilder
-COPY ./jena-extras/jena-querybuilder/pom.xml ./jena-extras/jena-querybuilder/pom.xml
-
-RUN mkdir ./jena-extras/jena-commonsrdf
-COPY ./jena-extras/jena-commonsrdf/pom.xml ./jena-extras/jena-commonsrdf/pom.xml
-
-RUN mkdir ./jena-elephas
-COPY ./jena-elephas/pom.xml ./jena-elephas/pom.xml
-
-RUN mkdir ./jena-elephas/jena-elephas-io
-COPY ./jena-elephas/jena-elephas-io/pom.xml ./jena-elephas/jena-elephas-io/pom.xml
-
-RUN mkdir ./jena-elephas/jena-elephas-common
-COPY ./jena-elephas/jena-elephas-common/pom.xml ./jena-elephas/jena-elephas-common/pom.xml
-
-RUN mkdir ./jena-elephas/jena-elephas-mapreduce
-COPY ./jena-elephas/jena-elephas-mapreduce/pom.xml ./jena-elephas/jena-elephas-mapreduce/pom.xml
-
-RUN mkdir ./jena-elephas/jena-elephas-stats
-COPY ./jena-elephas/jena-elephas-stats/pom.xml ./jena-elephas/jena-elephas-stats/pom.xml
-
-RUN mkdir ./apache-jena-osgi
-COPY ./apache-jena-osgi/pom.xml ./apache-jena-osgi/pom.xml
-
-RUN mkdir ./apache-jena-osgi/jena-osgi
-COPY ./apache-jena-osgi/jena-osgi/pom.xml ./apache-jena-osgi/jena-osgi/pom.xml
-
-RUN mkdir ./apache-jena-osgi/jena-osgi-features
-COPY ./apache-jena-osgi/jena-osgi-features/pom.xml ./apache-jena-osgi/jena-osgi-features/pom.xml
-
-RUN mkdir ./jena-integration-tests
-COPY ./jena-integration-tests/pom.xml ./jena-integration-tests/pom.xml
-
-RUN mkdir ./apache-jena
-COPY ./apache-jena/pom.xml ./apache-jena/pom.xml
+COPY ./apache-jena ./apache-jena
 
 COPY ./pom.xml ./pom.xml
 
@@ -183,9 +66,6 @@ COPY ./pom.xml ./pom.xml
 # RUN cd ./jena-fuseki-fulljar; mvn dependency:go-offline
 # RUN cd ./apache-jena-fuseki; mvn dependency:go-offline
 RUN mvn dependency:go-offline
-
-
-COPY . ./
 
 # WORKDIR /tmp/jena-fuseki2
 # RUN mvn clean
@@ -250,14 +130,12 @@ RUN  $FUSEKI_HOME/fuseki-server & \
 # As "localhost" is often inaccessible within Docker container,
 # we'll enable basic-auth with a random admin password
 # (which we'll generate on start-up)
-COPY --from=build /tmp/docker/shiro.ini $FUSEKI_HOME/shiro.ini
-COPY --from=build /tmp/docker/docker-entrypoint.sh /
+COPY docker/shiro.ini $FUSEKI_HOME/shiro.ini
+COPY docker/docker-entrypoint.sh /
 RUN chmod 755 /docker-entrypoint.sh
 
-
-COPY --from=build /tmp/docker/load.sh $FUSEKI_HOME/
-COPY --from=build /tmp/docker/tdbloader $FUSEKI_HOME/
-RUN chmod 755 $FUSEKI_HOME/load.sh $FUSEKI_HOME/tdbloader
+COPY docker/load.sh $FUSEKI_HOME/
+RUN chmod 755 $FUSEKI_HOME/load.sh
 #VOLUME /staging
 ENV PATH $PATH:/usr/local/bin:/jena/bin
 
