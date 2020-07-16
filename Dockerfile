@@ -240,10 +240,16 @@ RUN mv apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT/* .
 RUN rm -rf apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT*
 RUN rm -rf fuseki.war && chmod 755 fuseki-server
 
+WORKDIR /tmp
+
 # Test the install by testing it's ping resource. 20s sleep because Docker Hub.
 RUN  $FUSEKI_HOME/fuseki-server & \
      sleep 20 && \
      curl -sS --fail 'http://localhost:3030/$/ping'
+
+# Ensure this is clean!
+RUN rm -rf $FUSEKI_BASE/*
+
 
 # No need to kill Fuseki as our shell will exit after curl
 
@@ -264,4 +270,4 @@ ENV PATH $PATH:/usr/local/bin:/jena/bin
 # Where we start our server from
 WORKDIR $FUSEKI_HOME
 EXPOSE 3030
-CMD ["/docker-entrypoint.sh"]
+CMD ["/docker-entrypoint.sh", "/jena-fuseki/fuseki-server"]

@@ -37,8 +37,9 @@ if [ -n "$ADMIN_PASSWORD" ] ; then
   sed -i "s/^admin=.*/admin=$ADMIN_PASSWORD/" "$FUSEKI_BASE/shiro.ini"
 fi
 
-# exec "$@" &
-exec /jena-fuseki/fuseki-server
+echo "Fuseki startup cmd: $@"
+exec "$@" &
+# exec /jena-fuseki/fuseki-server
 
 # Wait until server is up
 while [[ $(curl -I http://localhost:3030 2>/dev/null | head -n 1 | cut -d$' ' -f2) != '200' ]]; do
