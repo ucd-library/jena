@@ -34,20 +34,4 @@ public class RDFWriterFactoryRIOT implements RDFWriterF {
     public RDFWriter getWriter(String langname) {
         return new RDFWriterRIOT(langname);
     }
-
-    @Override
-    public String setWriterClassName(String lang, String className) {
-        return null;
-    }
-
-    @Override
-    public void resetRDFWriterF() {
-        // does nothing as the reader can not be modified.
-
-    }
-
-    @Override
-    public String removeWriter(String lang) {
-        return null;
-    }
 }

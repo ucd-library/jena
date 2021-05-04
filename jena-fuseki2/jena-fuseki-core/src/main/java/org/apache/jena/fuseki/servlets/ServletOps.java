@@ -18,13 +18,15 @@
 
 package org.apache.jena.fuseki.servlets;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.jena.atlas.io.IndentedWriter;
+import org.apache.jena.atlas.RuntimeIOException;
+import org.apache.jena.atlas.io.IO;
 import org.apache.jena.atlas.json.JSON;
 import org.apache.jena.atlas.json.JsonValue;
 import org.apache.jena.fuseki.system.UploadDetails;
@@ -37,22 +39,54 @@ import org.apache.jena.web.HttpSC.Code;
 
 public class ServletOps {
 
+    /** Send an HTTP error response. 
+     *  Include an optional message in the body (as text/plain), if provided.
+     *  Note that we do not set a custom Reason Phrase.
+     *  <br/>
+     *  HTTPS/2 does not have a "Reason Phrase". 
+     * 
+     * @param response
+     * @param statusCode
+     * @param message
+     */
     public static void responseSendError(HttpServletResponse response, int statusCode, String message) {
-        try {
-            response.sendError(statusCode, message);
-        } catch (IOException ex) {
-            errorOccurred(ex);
-        } catch (IllegalStateException ex) {}
+        response.setStatus(statusCode);
+        if ( message != null )
+            writeMessagePlainTextError(response, message);
+        //response.sendError(statusCode, message);
     }
 
+    /** Send an HTTP response with no body */
     public static void responseSendError(HttpServletResponse response, int statusCode) {
-        try {
-            response.sendError(statusCode);
-        } catch (IOException ex) {
-            errorOccurred(ex);
+        response.setStatus(statusCode);
+    }
+
+    /** Write a plain text body.
+     * <p>
+     * Use Content-Length so the connection is preserved.
+     */
+    static void writeMessagePlainText(HttpServletResponse response, String message) {
+        if ( message == null )
+            return;
+        if ( ! message.endsWith("\n") )
+            message = message+"\n";
+        response.setContentLength(message.length());
+        response.setContentType(WebContent.contentTypeTextPlain);
+        response.setCharacterEncoding(WebContent.charsetUTF8);
+        ServletOps.setNoCache(response);
+        try(ServletOutputStream out = response.getOutputStream()){
+            out.print(message);
+        }
+        catch (IOException ex) {
+            IO.exception(ex);
         }
     }
-
+     
+     public static void writeMessagePlainTextError(HttpServletResponse response, String message) {
+        try { writeMessagePlainText(response, message); }
+        catch (RuntimeIOException ex) {}
+     }
+    
     public static void successNoContent(HttpAction action) {
         success(action, HttpSC.NO_CONTENT_204);
     }
@@ -78,6 +112,7 @@ public class ServletOps {
     public static void successPage(HttpAction action, String message) {
         try {
             action.response.setContentType("text/html");
+            action.response.setCharacterEncoding(WebContent.charsetUTF8);
             action.response.setStatus(HttpSC.OK_200);
             PrintWriter out = action.response.getWriter();
             out.println("<html>");
@@ -146,11 +181,11 @@ public class ServletOps {
     }
 
     public static void error(int statusCode) {
-        throw new ActionErrorException(null, null, statusCode);
+        throw new ActionErrorException(statusCode, null, null);
     }
 
     public static void error(int statusCode, String string) {
-        throw new ActionErrorException(null, string, statusCode);
+        throw new ActionErrorException(statusCode, string, null);
     }
 
     public static void errorOccurred(String message) {
@@ -162,7 +197,9 @@ public class ServletOps {
     }
 
     public static void errorOccurred(String message, Throwable ex) {
-        throw new ActionErrorException(ex, message, HttpSC.INTERNAL_SERVER_ERROR_500);
+        if ( message == null )
+            System.err.println();
+        throw new ActionErrorException(HttpSC.INTERNAL_SERVER_ERROR_500, message, ex);
     }
 
     public static String formatForLog(String string) {
@@ -182,6 +219,16 @@ public class ServletOps {
         response.setHeader(HttpNames.hPragma, "no-cache");
     }
 
+    /** response to a upload operation of some kind. */
+    public static void uploadResponse(HttpAction action, UploadDetails details) {
+        if ( details.getExistedBefore().equals(PreState.ABSENT) )
+            ServletOps.successCreated(action);
+        else
+            ServletOps.success(action); // successNoContent if empty body.
+        JsonValue v = details.detailsJson();
+        ServletOps.sendJson(action, v);
+    }
+
     /** Send a JSON value as a 200 response.  Null object means no response body and no content-type headers. */
     public static void sendJsonReponse(HttpAction action, JsonValue v) {
         if ( v == null ) {
@@ -195,33 +242,22 @@ public class ServletOps {
     }
 
     /** Send a JSON value as a 200 response.  Null object means no response body and no content-type headers. */
-    public static void sendJson(HttpAction action, JsonValue v) {
-        if ( v == null )
+    public static void sendJson(HttpAction action, JsonValue jValue) {
+        if ( jValue == null )
             return;
 
+        ByteArrayOutputStream bytesOut = new ByteArrayOutputStream();
+        JSON.write(bytesOut, jValue);
+        byte[] bytes = bytesOut.toByteArray();
         try {
             HttpServletResponse response = action.response;
             ServletOutputStream out = response.getOutputStream();
             response.setContentType(WebContent.contentTypeJSON);
+            response.setContentLength(bytes.length);
             response.setCharacterEncoding(WebContent.charsetUTF8);
-
-            IndentedWriter iOut = new IndentedWriter(out);
-            JSON.write(iOut, v);
-            // Make sure we end with a newline.
-            iOut.ensureStartOfLine();
-            iOut.flush();
+            out.write(bytes);
             out.flush();
         } catch (IOException ex) { ServletOps.errorOccurred(ex); }
-    }
-
-    /** response to a upload operation of some kind. */
-    public static void uploadResponse(HttpAction action, UploadDetails details) {
-        if ( details.getExistedBefore().equals(PreState.ABSENT) )
-            ServletOps.successCreated(action);
-        else
-            ServletOps.success(action); // successNoContent if empty body.
-        JsonValue v = details.detailsJson();
-        ServletOps.sendJson(action, v);
     }
 }
 

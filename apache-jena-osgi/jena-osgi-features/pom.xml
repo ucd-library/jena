@@ -22,7 +22,7 @@
   <parent>
     <groupId>org.apache.jena</groupId>
     <artifactId>apache-jena-osgi</artifactId>
-    <version>3.16.0-SNAPSHOT</version>
+    <version>3.17.0</version>
   </parent>
   <artifactId>jena-osgi-features</artifactId>  
   <packaging>bundle</packaging>
@@ -34,7 +34,7 @@
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>build-helper-maven-plugin</artifactId>
-          <version>1.8</version>
+          <version>3.2.0</version>
         </plugin>
       </plugins>
     </pluginManagement>

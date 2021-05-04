@@ -56,6 +56,7 @@ public class FusekiVocab
     // Server endpoints.
     public static final Property pServerPing        = property("pingEP");
     public static final Property pServerStats       = property("statsEP");
+    public static final Property pServerMetrics     = property("metricsEP");
 
     // Endpoint description - old style.
     public static final Property pServiceQueryEP                = property("serviceQuery");
@@ -64,10 +65,11 @@ public class FusekiVocab
     public static final Property pServiceShaclEP                = property("serviceShacl");
     public static final Property pServiceReadWriteGraphStoreEP  = property("serviceReadWriteGraphStore");
     public static final Property pServiceReadGraphStoreEP       = property("serviceReadGraphStore");
-    public static final Property pServiceReadWriteQuadsEP       = property("serviceReadWriteQuads");
-    public static final Property pServiceReadQuadsEP            = property("serviceReadQuads");
+    // No longer used.
+//    public static final Property pServiceReadWriteQuadsEP       = property("serviceReadWriteQuads");
+//    public static final Property pServiceReadQuadsEP            = property("serviceReadQuads");
 
-    // Operation names : the standard operations. 
+    // Operation names : the standard operations.
     // "alt" names are the same but using "_" not "_".
     public static final Resource opQuery       = resource("query");
     public static final Resource opUpdate      = resource("update");
@@ -79,7 +81,7 @@ public class FusekiVocab
     public static final Resource opNoOp        = resource("no-op");
     public static final Resource opNoOp_alt    = resource("no_op");
     public static final Resource opShacl       = resource("shacl");
-    
+
     // Internal
     private static final String stateNameActive     = DataServiceStatus.ACTIVE.name;
     private static final String stateNameOffline    = DataServiceStatus.OFFLINE.name;

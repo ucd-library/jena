@@ -24,15 +24,16 @@ import java.io.InputStream;
 
 import org.apache.jena.atlas.io.IO;
 import org.apache.jena.atlas.lib.StrUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.ConfigurationFactory;
 import org.apache.logging.log4j.core.config.ConfigurationSource;
-import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.logging.log4j.core.config.properties.PropertiesConfigurationFactory;
 
-/** 
+/**
  * Additional logging control, for Log4j2 as used by jena-cmds.
- * <br/> 
+ * <br/>
  * This class pulls in log4j2.
  * <br/>
  * This class is split out from {@link LogCtl} to decouple the class loading dependencies.
@@ -50,20 +51,16 @@ public class LogCtlLog4j2 {
         }
     }
 
-    private static void resetLogging(InputStream inputStream, String syntaxHint) throws IOException {
+    public static void resetLogging(InputStream inputStream, String syntaxHint) throws IOException {
         ConfigurationSource source = new ConfigurationSource(inputStream);
         ConfigurationFactory factory = ( syntaxHint.endsWith(".properties") )
             ? new PropertiesConfigurationFactory()
             : ConfigurationFactory.getInstance();
         Configuration configuration = factory.getConfiguration(null, source);
-        Configurator.initialize(configuration);
+        LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+        // This changes exising loggers.
+        ctx.setConfiguration(configuration);
     }
-    
-//    public static void setCmdLogging() {
-//        LogCtl.setLog4j2();
-//        if ( ! LogCtl.isSetLog4j2property() )
-//            resetLogging(log4j2setupCmd);
-//    }
 
     // basic setup.
     // @formatter:off
@@ -71,12 +68,12 @@ public class LogCtlLog4j2 {
     public static String log4j2setup = StrUtils.strjoinNL
         ( "## Command default log4j2 setup : log4j2 properties syntax."
         , "status = error"
-        , "name = PropertiesConfig"
-        , "filters = threshold"
-        , ""
-        , "filter.threshold.type = ThresholdFilter"
-        , "filter.threshold.level = ALL"
-
+        , "name = JenaLoggingDft"
+//        , "filters = threshold"
+//        , ""
+//        , "filter.threshold.type = ThresholdFilter"
+//        , "filter.threshold.level = ALL"
+//      , ""        
         , "appender.console.type = Console"
         , "appender.console.name = OUT"
         , "appender.console.target = SYSTEM_OUT"
@@ -104,11 +101,11 @@ public class LogCtlLog4j2 {
         ( "## Command default log4j2 setup : log4j2 properties syntax."
         , "status = error"
         , "name = PropertiesConfig"
-        , "filters = threshold"
-        , ""
-        , "filter.threshold.type = ThresholdFilter"
-        , "filter.threshold.level = ALL"
-
+//        , "filters = threshold"
+//        , ""
+//        , "filter.threshold.type = ThresholdFilter"
+//        , "filter.threshold.level = ALL"
+//      , ""
         , "appender.console.type = Console"
         , "appender.console.name = OUT"
         , "appender.console.target = SYSTEM_ERR"

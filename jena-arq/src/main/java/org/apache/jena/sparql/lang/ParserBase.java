@@ -32,7 +32,6 @@ import org.apache.jena.graph.Node ;
 import org.apache.jena.graph.NodeFactory ;
 import org.apache.jena.graph.Triple ;
 import org.apache.jena.iri.IRI ;
-import org.apache.jena.n3.JenaURIException ;
 import org.apache.jena.query.ARQ ;
 import org.apache.jena.query.QueryParseException ;
 import org.apache.jena.riot.checker.CheckerIRI ;
@@ -52,6 +51,7 @@ import org.apache.jena.sparql.path.Path ;
 import org.apache.jena.sparql.syntax.* ;
 import org.apache.jena.sparql.util.ExprUtils ;
 import org.apache.jena.sparql.util.LabelToNodeMap ;
+import org.apache.jena.ttl.JenaURIException;
 import org.apache.jena.vocabulary.RDF ;
 import org.slf4j.Logger ;
 import org.slf4j.LoggerFactory ;
@@ -88,7 +88,7 @@ public class ParserBase
 
     // This is the map used allocate blank node labels during parsing.
     // 1/ It is different between CONSTRUCT and the query pattern
-    // 2/ Each BasicGraphPattern is a scope for blank node labels so each
+    // 2/ Each BasicGraphPattern is a scope for blank node labels so eachf
     //    BGP causes the map to be cleared at the start of the BGP
 
     LabelToNodeMap activeLabelMap = anonVarLabels ;
@@ -97,6 +97,7 @@ public class ParserBase
     // Aggregates are only allowed in places where grouping can happen.
     // e.g. SELECT clause but not a FILTER.
     private boolean allowAggregatesInExpressions = false ;
+    private int     aggregateDepth               = 0 ;
 
     //LabelToNodeMap listLabelMap = new LabelToNodeMap(true, new VarAlloc("L")) ;
     // ----
@@ -106,6 +107,19 @@ public class ParserBase
     protected Prologue prologue ;
     public void setPrologue(Prologue prologue) { this.prologue = prologue ; }
     public Prologue getPrologue() { return prologue ; }
+
+    protected void setBase(String iriStr, int line, int column) {
+        if ( isBNodeIRI(iriStr) )
+            throwParseException("Blank node URI syntax used for BASE", line, column);
+        iriStr = resolveIRI(iriStr, line, column);
+        getPrologue().setBaseURI(iriStr);
+    }
+
+    protected void setPrefix(String prefix, String uriStr, int line, int column) {
+        // Should have happen in the parser because this step is "token to prefix".
+        //prefix = fixupPrefix(prefix, line, column);
+        getPrologue().setPrefix(prefix, uriStr);
+    }
 
     protected void setInConstructTemplate(boolean b) {
         setBNodesAreVariables(!b) ;
@@ -135,6 +149,11 @@ public class ParserBase
         this.allowAggregatesInExpressions = allowAggregatesInExpressions;
     }
 
+    // Tracking for nested aggregates.
+    protected void startAggregate()   { aggregateDepth++; }
+    protected int getAggregateDepth() { return aggregateDepth; }
+    protected void finishAggregate()  { aggregateDepth--; }
+    
     protected Element compressGroupOfOneGroup(ElementGroup elg) {
         // remove group of one group.
         if ( elg.size() == 1 ) {
@@ -241,6 +260,7 @@ public class ParserBase
 
     protected String resolveQuotedIRI(String iriStr, int line, int column) {
         iriStr = stripQuotes(iriStr) ;
+        iriStr = unescapeUnicode(iriStr, line, column);
         return resolveIRI(iriStr, line, column) ;
     }
 
@@ -335,7 +355,7 @@ public class ParserBase
         if ( ! n.isConcrete() )
             throwParseException("Term is not concrete: "+n, line, column) ;
     }
-    
+
     // BNode from a list
 //    protected Node createListNode()
 //    { return listLabelMap.allocNode() ; }
@@ -373,6 +393,7 @@ public class ParserBase
         return new E_NotExists(element) ;
     }
 
+    // Convert a parser token, which includes the final ":", to a prefix name.
     protected String fixupPrefix(String prefix, int line, int column) {
         // \ u processing!
         if ( prefix.endsWith(":") )
@@ -456,6 +477,10 @@ public class ParserBase
         }
     }
 
+    public static String unescapeUnicode(String s, int line, int column) {
+        return unescape(s, '\\', true, line, column);
+    }
+    
     public static String unescapePName(String s, int line, int column) {
         char escape = '\\' ;
         int idx = s.indexOf(escape) ;

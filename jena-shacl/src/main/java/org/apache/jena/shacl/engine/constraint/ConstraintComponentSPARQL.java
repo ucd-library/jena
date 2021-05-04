@@ -18,15 +18,18 @@
 
 package org.apache.jena.shacl.engine.constraint;
 
+import java.util.Objects;
 import java.util.Set;
 
+import org.apache.jena.atlas.io.IndentedWriter;
 import org.apache.jena.ext.com.google.common.collect.Multimap;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.query.Query;
-import org.apache.jena.query.QueryFactory;
 import org.apache.jena.query.QueryParseException;
+import org.apache.jena.riot.out.NodeFormatter;
 import org.apache.jena.shacl.engine.Parameter;
+import org.apache.jena.shacl.engine.SparqlConstraints;
 import org.apache.jena.shacl.engine.ValidationContext;
 import org.apache.jena.shacl.parser.Constraint;
 import org.apache.jena.shacl.parser.ShaclParseException;
@@ -48,7 +51,7 @@ public class ConstraintComponentSPARQL implements Constraint {
 
         String qs =  sparqlConstraintComponent.getSparqlString();
         try {
-            this.query = QueryFactory.create(sparqlConstraintComponent.getSparqlString());
+            this.query = SparqlConstraints.parseQueryString(sparqlConstraintComponent.getSparqlString());
             if ( !query.isAskType() && !query.isSelectType() )
                 throw new ShaclParseException("Not a SELECT or ASK query");
         } catch (QueryParseException ex) {
@@ -77,10 +80,31 @@ public class ConstraintComponentSPARQL implements Constraint {
     }
 
     @Override
+    public void printCompact(IndentedWriter out, NodeFormatter nodeFmt) {}
+
+    @Override
     public String toString() {
         if ( sparqlConstraintComponent.isSelect() )
             return "SELECT"+parameterMap;
         else
             return "ASK"+parameterMap;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(parameterMap, query, sparqlConstraintComponent);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if ( this == obj )
+            return true;
+        if ( obj == null )
+            return false;
+        if ( getClass() != obj.getClass() )
+            return false;
+        ConstraintComponentSPARQL other = (ConstraintComponentSPARQL)obj;
+        return Objects.equals(parameterMap, other.parameterMap) && Objects.equals(query, other.query)
+               && Objects.equals(sparqlConstraintComponent, other.sparqlConstraintComponent);
     }
 }

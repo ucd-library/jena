@@ -29,12 +29,17 @@ import org.apache.jena.atlas.io.IO;
 import org.apache.jena.atlas.lib.StrUtils;
 import org.apache.jena.atlas.logging.LogCtlLog4j2;
 import org.apache.jena.fuseki.Fuseki;
-import org.apache.logging.log4j.core.config.Configuration;
-import org.apache.logging.log4j.core.config.ConfigurationFactory;
-import org.apache.logging.log4j.core.config.ConfigurationSource;
-import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.core.config.properties.PropertiesConfigurationFactory;
 
+/**
+ * FusekiLogging.
+ * <p>
+ * This applies to Fuseki run from the command line and embedded.
+ * <p>
+ * This does not apply to Fuseki running in Tomcat where it uses the
+ * servlet 3.0 mechanism described in
+ * <a href="https://logging.apache.org/log4j/2.x/manual/webapp.html">Log4j2 manual
+ * (webapp)</a>. See {@code FusekiServerEnvironmentInit}.
+ */
 public class FusekiLogging
 {
     // This class must not have static constants, or otherwise not "Fuseki.*"
@@ -46,37 +51,31 @@ public class FusekiLogging
     // 2/ Use file:log4j2.properties if exists
     // 3/ Use log4j2.properties on the classpath.
     // 4/ Use org/apache/jena/fuseki/log4j2.properties on the classpath.
-    // 5/ Use Built in string
+    // 5/ Use built in string
+    //
+    // If a webapp running as a .war file in webapp container (e.g. Tomcat)
+    // logging is initialized in FusekiServerEnvironmentInit using a <contaxt-param>.
 
     /**
      * Places for the log4j properties file at (3).
      * This is not the standard, fixed classpath names used by log4j.
-     *             //   log4j2.properties, log4j2.yaml, log4j2.json, log4j2.xml
-
+     * log4j2.properties, log4j2.yaml, log4j2.json, log4j2.xml
      */
     private static final String[] resourcesForLog4jProperties = {
-        // NOT the standard, fixed classpath names used by log4j2
-        //  .   log4j2.properties, log4j2.yaml, log4j2.json, log4j2.xml
-        "log4j2-fuseki.properties"
+        "log4j2.properties"
     };
 
-    private static final boolean LogLogging     = System.getProperty("fuseki.loglogging") != null;
+    private static final boolean LogLogging     = System.getenv("FUSEKI_LOGLOGGING") != null || System.getProperty("fuseki.loglogging") != null;
+    
     private static boolean loggingInitialized   = false;
-    private static boolean allowLoggingReset    = true;
 
     /**
-     * Switch off logging setting.
-     * Used by the embedded server so that the application's
-     * logging setup is not overwritten.
-     */
-    public static synchronized void allowLoggingReset(boolean value) {
-        allowLoggingReset = value;
-    }
-
-    /**
-     * Mark whether logging is considered "initialized".
-     * Some external factor (e.g. log4j2 webapp context param "log4jConfiguration")
-     * may mean logging wil be initialized some other way.
+     * Mark whether logging is considered "initialized". Some external factor (e.g.
+     * log4j2 webapp context-param "log4jConfiguration") may mean logging will be
+     * initialized some other way.
+     * <p>
+     * Call this with argument false if the code wants to re-initialize the logging
+     * otherwise calls of {@code setLogging} will be no-ops.
      */
     public static synchronized void markInitialized(boolean isInitialized) {
         logLogging("markInitialized("+isInitialized+")");
@@ -91,13 +90,17 @@ public class FusekiLogging
     public static final String log4j2_configurationFile = "log4j.configurationFile";
     public static final String log4j2_web_configuration = "log4jConfiguration";
 
+    public static synchronized boolean hasInitialized() {
+        return loggingInitialized;
+    }
+    
     /** Set up logging. Allow an extra location (string directory name without trailing "/"). This may be null
      *
      * @param extraDir
      */
     public static synchronized void setLogging(Path extraDir) {
-        if ( ! allowLoggingReset )
-            return;
+        // Cope with repeated calls so code can call this to ensure
+        // logging setup has happened.
         if ( loggingInitialized )
             return;
         loggingInitialized = true;
@@ -127,11 +130,11 @@ public class FusekiLogging
             // Instead, we manually load a resource.
             logLogging("Try classpath %s", resourceName);
             URL url = Thread.currentThread().getContextClassLoader().getResource(resourceName);
-            if ( url != null ) {
-                // Problem - test classes can be on the classpath (development mainly).
-                if ( url.toString().contains("-tests.jar") || url.toString().contains("test-classes") )
-                    url = null;
-            }
+//            if ( url != null ) {
+//                // Problem - test classes can be on the classpath (development mainly).
+//                if ( url.toString().contains("-tests.jar") || url.toString().contains("test-classes") )
+//                    url = null;
+//            }
 
             if ( url != null ) {
                 try ( InputStream inputStream = url.openStream() ) {
@@ -164,16 +167,9 @@ public class FusekiLogging
         }
         return false;
     }
-
+    
     private static void loadConfiguration(InputStream inputStream, String resourceName) throws IOException {
-        ConfigurationSource source = new ConfigurationSource(inputStream);
-        ConfigurationFactory factory;
-        if ( resourceName.endsWith(".properties" ) )
-            factory = new PropertiesConfigurationFactory();
-        else
-            factory = ConfigurationFactory.getInstance();
-        Configuration configuration = factory.getConfiguration(null, source);
-        Configurator.reconfigure(configuration);
+        LogCtlLog4j2.resetLogging(inputStream, resourceName);
     }
 
     private static boolean attempt(String fn) {
@@ -204,23 +200,22 @@ public class FusekiLogging
     }
 
     private static String log4j2setupFallback() {
-        // This should be the same as resource.
-        // It protects against downstream repacking not including all resources.
+        // The logging file for Fuseki in Tomcat webapp is in "log4j2.properties" in the webapp root directory.
+        // This is used by command line Fuseki (full and main)
         // @formatter:off
         return StrUtils.strjoinNL
             ("## Plain output to stdout"
             , "status = error"
-            , "name = PropertiesConfig"
-            , "filters = threshold"
-            , ""
-            , "filter.threshold.type = ThresholdFilter"
-            , "filter.threshold.level = ALL"
-            , ""
+            , "name = FusekiLogging"
+//            , ""
+//            , "filters = threshold"
+//            , "filter.threshold.type = ThresholdFilter"
+//            , "filter.threshold.level = ALL"
+//            , ""
             , "appender.console.type = Console"
             , "appender.console.name = OUT"
             , "appender.console.target = SYSTEM_OUT"
             , "appender.console.layout.type = PatternLayout"
-            //, "appender.console.layout.pattern = [%d{yyyy-MM-dd HH:mm:ss}] %-10c{1} %-5p :DFT: %m%n"
             , "appender.console.layout.pattern = [%d{yyyy-MM-dd HH:mm:ss}] %-10c{1} %-5p %m%n"
             , ""
             , "rootLogger.level                  = INFO"

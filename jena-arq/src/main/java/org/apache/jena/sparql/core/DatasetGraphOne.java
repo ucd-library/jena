@@ -18,8 +18,6 @@
 
 package org.apache.jena.sparql.core;
 
-import static org.apache.jena.sparql.util.graph.GraphUtils.triples2quadsDftGraph;
-
 import java.util.Iterator;
 
 import org.apache.jena.atlas.iterator.Iter;
@@ -30,14 +28,15 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.query.ReadWrite;
 import org.apache.jena.query.TxnType;
 import org.apache.jena.reasoner.InfGraph;
+import org.apache.jena.riot.other.G;
 import org.apache.jena.sparql.graph.GraphOps;
 import org.apache.jena.sparql.graph.GraphZero;
 
 /** DatasetGraph of a single graph as default graph.
  * <p>
- *  Fixed as one graph (the default) - named graphs can notbe added nor the default graph changed, only the contents modified. 
+ *  Fixed as one graph (the default) - named graphs can notbe added nor the default graph changed, only the contents modified.
  *  <p>
- *  Ths dataset passes transactions down to a nominated backing {@link DatasetGraph}
+ *  This dataset passes transactions down to a nominated backing {@link DatasetGraph}.
  *  <p>
  *  It is particular suitable for use with an interference graph.
  */
@@ -58,7 +57,7 @@ public class DatasetGraphOne extends DatasetGraphBaseFind {
         // Didn't find a GraphView so no backing DatasetGraph; work on the graph as given.
         return new DatasetGraphOne(graph);
     }
-    
+
     private static Graph unwrap(Graph graph) {
         for (;;) {
             if ( graph instanceof InfGraph ) {
@@ -71,26 +70,26 @@ public class DatasetGraphOne extends DatasetGraphBaseFind {
             graph = graph2;
         }
     }
-    
+
     private DatasetGraphOne(Graph graph, DatasetGraph backing) {
         this.graph = graph;
         backingDGS = backing;
         supportsAbort = backing.supportsTransactionAbort();
         txn = backing;
     }
-    
+
     private DatasetGraphOne(Graph graph) {
-        // Not GraphView which was handled in create(Graph). 
+        // Not GraphView which was handled in create(Graph).
         this.graph = graph;
         txn = new TxnDataset2Graph(graph);
         //txn = TransactionalLock.createMRSW();
         backingDGS = null;
         // Don't advertise the fact but TxnDataset2Graph tries to provide abort.
-        // We can not guarantee it though because a plain, non-TIM, 
+        // We can not guarantee it though because a plain, non-TIM,
         // memory graph does not support abort.
         supportsAbort = false;
     }
-    
+
     @Override public void begin(TxnType txnType)        { txn.begin(txnType); }
     @Override public void begin(ReadWrite mode)         { txn.begin(mode); }
     @Override public void commit()                      { txn.commit(); }
@@ -102,7 +101,7 @@ public class DatasetGraphOne extends DatasetGraphBaseFind {
     @Override public TxnType transactionType()          { return txn.transactionType(); }
     @Override public boolean supportsTransactions()     { return true; }
     @Override public boolean supportsTransactionAbort() { return supportsAbort; }
-    
+
     @Override
     public boolean containsGraph(Node graphNode) {
         if ( isDefaultGraph(graphNode) )
@@ -114,7 +113,7 @@ public class DatasetGraphOne extends DatasetGraphBaseFind {
     public Graph getDefaultGraph() {
         return graph;
     }
-    
+
     @Override
     public Graph getUnionGraph() {
         return GraphZero.instance();
@@ -189,7 +188,7 @@ public class DatasetGraphOne extends DatasetGraphBaseFind {
     // -- Not needed -- implement find(g,s,p,o) directly.
     @Override
     protected Iterator<Quad> findInDftGraph(Node s, Node p, Node o) {
-        return triples2quadsDftGraph(graph.find(s, p, o));
+        return G.triples2quadsDftGraph(graph.find(s, p, o));
     }
 
     @Override
@@ -216,7 +215,7 @@ public class DatasetGraphOne extends DatasetGraphBaseFind {
     @Override
     public Iterator<Quad> find(Node g, Node s, Node p, Node o) {
         if ( isWildcard(g) || isDefaultGraph(g) )
-            return triples2quadsDftGraph(graph.find(s, p, o));
+            return G.triples2quadsDftGraph(graph.find(s, p, o));
         else
             return new NullIterator<>();
     }

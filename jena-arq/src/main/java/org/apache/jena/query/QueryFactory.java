@@ -18,11 +18,12 @@
 
 package org.apache.jena.query;
 
-import java.io.IOException;
+import java.io.InputStream;
 
 import org.apache.jena.atlas.io.IO;
 import org.apache.jena.riot.system.IRIResolver ;
 import org.apache.jena.riot.system.stream.StreamManager;
+import org.apache.jena.shared.NotFoundException;
 import org.apache.jena.sparql.lang.ParserARQ ;
 import org.apache.jena.sparql.lang.SPARQLParser ;
 import org.apache.jena.sparql.lang.SPARQLParserRegistry ;
@@ -231,13 +232,10 @@ public class QueryFactory
         if ( filemanager == null )
             filemanager = StreamManager.get() ;
 
-        String qStr;
-        try {
-            qStr = IO.readWholeFileAsUTF8(filemanager.open(url));
-        } catch (IOException e) {
-            IO.exception(e);
-            qStr = null;
-        }
+        InputStream in = filemanager.open(url);
+        if ( in == null )
+            throw new NotFoundException("Not found: "+url);
+        String qStr = IO.readWholeFileAsUTF8(filemanager.open(url));
         if ( baseURI == null )
             baseURI = url ;
         if ( langURI == null )

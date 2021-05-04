@@ -18,14 +18,18 @@
 
 package org.apache.jena.shacl.engine.constraint;
 
+import static org.apache.jena.shacl.compact.writer.CompactOut.compact;
 import static org.apache.jena.shacl.lib.ShLib.displayStr;
 
 import java.util.Objects;
 
+import org.apache.jena.atlas.io.IndentedWriter;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.riot.out.NodeFormatter;
 import org.apache.jena.shacl.engine.ValidationContext;
+import org.apache.jena.shacl.lib.ShLib;
 import org.apache.jena.shacl.validation.ReportItem;
 import org.apache.jena.shacl.vocabulary.SHACL;
 import org.apache.jena.vocabulary.XSD;
@@ -54,6 +58,18 @@ public class DatatypeConstraint extends ConstraintTerm {
         this.rdfDatatype = NodeFactory.getType(dtURI);
     }
 
+    public Node getDatatype() {
+        return datatype;
+    }
+
+    public String getDatatypeURI() {
+        return dtURI;
+    }
+
+    public RDFDatatype getRDFDatatype() {
+        return rdfDatatype;
+    }
+
     @Override
     public ReportItem validate(ValidationContext vCxt, Node n) {
         if ( n.isLiteral() && dtURI.equals(n.getLiteralDatatypeURI()) ) {
@@ -66,13 +82,32 @@ public class DatatypeConstraint extends ConstraintTerm {
         }
         if ( ! n.isLiteral() )
             return new ReportItem(toString()+" : Not a literal", n);
-        String errMsg = toString()+" : Got datatype "+n.getLiteralDatatype().getURI()+" : Node "+displayStr(n);
+        String dtStr = vCxt.getShapesGraph().getPrefixMapping().qnameFor(dtURI);
+
+        if ( dtStr == null ) {
+            Node dt = NodeFactory.createURI(n.getLiteralDatatypeURI());
+            dtStr = ShLib.displayStr(dt);
+        }
+
+        String errMsg = toString()+" : Got datatype "+dtStr+" : Node "+displayStr(n);
         return new ReportItem(errMsg, n);
     }
 
     @Override
     public Node getComponent() {
         return SHACL.DatatypeConstraintComponent;
+    }
+
+    @Override
+    public void printCompact(IndentedWriter out, NodeFormatter nodeFmt) {
+        compact(out, nodeFmt, "datatype", datatype);
+
+        // Only allowed in a property shape without OR or NOT.
+//        if ( ShLib.isDatatype(dtURI) ) {
+//            nodeFmt.format(out, datatype);
+//        } else {
+//            compact(out, nodeFmt, "datatype", datatype);
+//        }
     }
 
     @Override

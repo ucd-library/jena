@@ -18,40 +18,43 @@
 
 package org.apache.jena.shacl.engine.constraint;
 
+import static org.apache.jena.shacl.compact.writer.CompactOut.compactArrayNodes;
+import static org.apache.jena.shacl.compact.writer.CompactOut.compactUnquotedString;
 import static org.apache.jena.shacl.lib.ShLib.displayStr;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
+import org.apache.jena.atlas.io.IndentedWriter;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.riot.other.G;
+import org.apache.jena.riot.out.NodeFormatter;
 import org.apache.jena.shacl.engine.ValidationContext;
-import org.apache.jena.shacl.lib.G;
-import org.apache.jena.shacl.lib.GN;
 import org.apache.jena.shacl.parser.Constraint;
 import org.apache.jena.shacl.parser.ShaclParseException;
 import org.apache.jena.shacl.parser.Shape;
 import org.apache.jena.shacl.vocabulary.SHACL;
 import org.apache.jena.sparql.path.Path;
 import org.apache.jena.sparql.path.PathFactory;
+import org.apache.jena.sparql.util.graph.GNode;
 import org.apache.jena.sparql.util.graph.GraphList;
 
 /** sh:closed */
 public class ClosedConstraint implements Constraint {
 
     private final Set<Node> expected;
-    private final Set<Node> ignoredProperties;
+    //private final Set<Node> ignoredProperties;
+    // Retain written order in SHACLC
+    private final List<Node> ignoredProperties;
     private final boolean active;
 
     public ClosedConstraint(Graph shapeGraph, Node shapeNode, boolean active) {
         expected = shapeProperties(shapeGraph, shapeNode);
         this.active = active;
-        // Set vs List
         List<Node> ignored = ignoredProperties(shapeGraph, shapeNode);
-        ignoredProperties = (ignored == null) ? Collections.emptySet() : new HashSet<>(ignored);
+        //ignoredProperties = (ignored == null) ? Collections.emptySet() : new HashSet<>(ignored);
+        ignoredProperties = (ignored == null) ? Collections.emptyList() : ignored;
     }
 
     private static List<Node> ignoredProperties(Graph shapesGraph, Node shNode) {
@@ -59,7 +62,7 @@ public class ClosedConstraint implements Constraint {
         if ( G.contains(shapesGraph, shNode, SHACL.ignoredProperties, null) ) {
             Node ignored = G.getOneSP(shapesGraph, shNode, SHACL.ignoredProperties);
             if ( ignored != null ) {
-                ignoredProperties = GraphList.members(GN.create(shapesGraph, ignored)) ;
+                ignoredProperties = GraphList.members(GNode.create(shapesGraph, ignored)) ;
                 ignoredProperties.forEach(p->{
                     if ( ! p.isURI() )
                         throw new ShaclParseException("Only URIs allowed in sh:ignoredProperties at "+displayStr(shNode));
@@ -130,10 +133,37 @@ public class ClosedConstraint implements Constraint {
     }
 
     @Override
+    public void printCompact(IndentedWriter out, NodeFormatter nodeFmt) {
+        compactUnquotedString(out, "closed", Boolean.toString(active));
+        if ( ! ignoredProperties.isEmpty() ) {
+            out.print(" ");
+            compactArrayNodes(out, nodeFmt, "ignoredProperties", ignoredProperties);
+        }
+    }
+
+    @Override
     public String toString() {
          String x = "Closed"+expected;
          if ( ! ignoredProperties.isEmpty() )
              x = x + ignoredProperties;
          return x;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(active, expected, ignoredProperties);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if ( this == obj )
+            return true;
+        if ( obj == null )
+            return false;
+        if ( getClass() != obj.getClass() )
+            return false;
+        ClosedConstraint other = (ClosedConstraint)obj;
+        return active == other.active && Objects.equals(expected, other.expected)
+               && Objects.equals(ignoredProperties, other.ignoredProperties);
     }
 }

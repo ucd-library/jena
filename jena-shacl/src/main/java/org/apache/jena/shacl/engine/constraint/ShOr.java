@@ -22,9 +22,14 @@ import static org.apache.jena.shacl.lib.ShLib.displayStr;
 
 import java.util.List;
 
+import org.apache.jena.atlas.io.IndentedWriter;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
+import org.apache.jena.riot.out.NodeFormatter;
+import org.apache.jena.shacl.compact.writer.CompactWriter;
+import org.apache.jena.shacl.compact.writer.ShaclNotCompactException;
 import org.apache.jena.shacl.engine.ValidationContext;
+import org.apache.jena.shacl.parser.Constraint;
 import org.apache.jena.shacl.parser.Shape;
 import org.apache.jena.shacl.validation.ReportItem;
 import org.apache.jena.shacl.validation.ValidationProc;
@@ -45,7 +50,7 @@ public class ShOr extends ConstraintOpN {
     @Override
     public ReportItem validate(ValidationContext vCxt, Graph data, Node node) {
         for ( Shape sh : others ) {
-            ValidationContext vCxt2 = new ValidationContext(vCxt);
+            ValidationContext vCxt2 = ValidationContext.create(vCxt);
             ValidationProc.execValidateShape(vCxt2, data, sh, node);
             boolean innerConforms = vCxt2.generateReport().conforms();
             if ( innerConforms )
@@ -53,6 +58,20 @@ public class ShOr extends ConstraintOpN {
             }
         String msg = toString()+" at focusNode "+displayStr(node);
         return new ReportItem(msg, node);
+    }
+
+    @Override
+    public void printCompact(IndentedWriter out, NodeFormatter nodeFmt) {
+        boolean first = true;
+        for ( Shape shape : others ) {
+            if ( ! first )
+                out.print(" | ");
+            first = false;
+            Constraint c = CompactWriter.getCompactPrintable(shape);
+            if ( c == null )
+                throw new ShaclNotCompactException("or");
+            c.printCompact(out, nodeFmt);
+        }
     }
 
     @Override

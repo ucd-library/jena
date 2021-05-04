@@ -30,7 +30,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.jena.atlas.io.IO;
 import org.apache.jena.atlas.lib.FileOps;
-import org.apache.jena.fuseki.cmd.FusekiInitialConfig;
+import org.apache.jena.fuseki.cmd.FusekiArgs;
 import org.apache.jena.fuseki.cmd.JettyFusekiWebapp;
 import org.apache.jena.fuseki.jetty.JettyServerConfig;
 import org.apache.jena.fuseki.system.FusekiNetLib;
@@ -223,6 +223,7 @@ public class ServerCtl {
     }
 
     protected static void setupServer(boolean updateable) {
+        // Does not initial Fuseki webapp.
         FusekiEnv.FUSEKI_HOME = Paths.get(TS_FusekiWebapp.FusekiTestHome).toAbsolutePath();
         FileOps.ensureDir("target");
         FileOps.ensureDir(TS_FusekiWebapp.FusekiTestHome);
@@ -233,11 +234,13 @@ public class ServerCtl {
         // in the case of starting in the same location. FusekiSystem has statics.
         // Fuseki-full is designed to be the only server, not restartable.
         // Here, we want to reset for testing.
+        FusekiWebapp.formatBaseArea();
         emptyDirectory(FusekiWebapp.dirSystemDatabase);
         emptyDirectory(FusekiWebapp.dirBackups);
         emptyDirectory(FusekiWebapp.dirLogs);
         emptyDirectory(FusekiWebapp.dirConfiguration);
         emptyDirectory(FusekiWebapp.dirDatabases);
+        emptyDirectory(FusekiWebapp.dirSystemFileArea);
 
         setupServer(port(), null, datasetPath(), updateable);
     }
@@ -253,7 +256,7 @@ public class ServerCtl {
         SystemState.location = Location.mem();
         SystemState.init$();
 
-        FusekiInitialConfig params = new FusekiInitialConfig();
+        FusekiArgs params = new FusekiArgs();
         dsgTesting = DatasetGraphFactory.createTxnMem();
         params.dsg = dsgTesting;
         params.datasetPath = datasetPath;

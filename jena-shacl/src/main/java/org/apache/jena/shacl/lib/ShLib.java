@@ -21,13 +21,14 @@ package org.apache.jena.shacl.lib;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.apache.jena.atlas.io.IndentedLineBuffer;
 import org.apache.jena.atlas.io.IndentedWriter;
 import org.apache.jena.atlas.lib.StrUtils;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
-import org.apache.jena.graph.Triple;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.query.ResultSet;
@@ -42,7 +43,6 @@ import org.apache.jena.shacl.ValidationReport;
 import org.apache.jena.shacl.engine.ShaclPaths;
 import org.apache.jena.shacl.engine.Target;
 import org.apache.jena.shacl.engine.TargetType;
-import org.apache.jena.shacl.parser.Shape;
 import org.apache.jena.shacl.vocabulary.SHACL;
 import org.apache.jena.sparql.path.Path;
 import org.apache.jena.vocabulary.OWL;
@@ -50,6 +50,7 @@ import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.XSD;
 
+/** Misc operations used in the jena-shacl module. */
 public class ShLib {
 
     private static String PREFIXES =  StrUtils.strjoinNL(
@@ -61,32 +62,46 @@ public class ShLib {
         ""
         );
 
-    private static PrefixMap pmap = PrefixMapFactory.createForOutput();
+    private static PrefixMap displayPrefixMap = PrefixMapFactory.createForOutput();
     static {
-        pmap.add("owl",  OWL.getURI());
-        pmap.add("rdf",  RDF.getURI());
-        pmap.add("rdfs", RDFS.getURI());
-        pmap.add("sh",   SHACL.getURI());
-        pmap.add("xsd",  XSD.getURI());
+        displayPrefixMap.add("owl",  OWL.getURI());
+        displayPrefixMap.add("rdf",  RDF.getURI());
+        displayPrefixMap.add("rdfs", RDFS.getURI());
+        displayPrefixMap.add("sh",   SHACL.getURI());
+        displayPrefixMap.add("xsd",  XSD.getURI());
     }
 
-    private static NodeFormatter nodeFmt = new NodeFormatterTTL(null, pmap);
+    public static NodeFormatter nodeFmtAbbrev = new NodeFormatterTTL(null, displayPrefixMap);
 
     public static void printShapes(Graph shapeGraph) {
         printShapes(Shapes.parse(shapeGraph));
     }
 
     public static void printShapes(Shapes shapes) {
-        IndentedWriter out  = IndentedWriter.stdout;
-        printShapes(out, shapes);
-        out.flush();
+        printShapes(IndentedWriter.stdout, shapes);
+        IndentedWriter.stdout.flush();
     }
 
     public static void printShapes(IndentedWriter out, Shapes shapes) {
-        int indent = out.getAbsoluteIndent();
-        for ( Shape shape : shapes ) {
-            shape.print(out);
+        NodeFormatter nodeFmt = ShLib.nodeFormatter(shapes);
+        printImports(out, nodeFmt, shapes);
+        printShapes(out, nodeFmt, shapes);
+        out.flush();
+    }
+
+    private static void printImports(IndentedWriter out, NodeFormatter nodeFmt, Shapes shapes) {
+        if ( shapes.getImports() != null ) {
+            shapes.getImports().forEach(impt->{
+                out.print("Import: ");
+                nodeFmt.format(out, impt);
+                out.println();
+            });
         }
+    }
+
+    public static void printShapes(IndentedWriter out, NodeFormatter nodeFmt, Shapes shapes) {
+        int indent = out.getAbsoluteIndent();
+        shapes.iteratorAll().forEachRemaining(shape->shape.print(out, nodeFmt));
         out.setAbsoluteIndent(indent);
     }
 
@@ -177,14 +192,14 @@ public class ShLib {
     }
 
     static String displayStr(RDFNode n) {
-        return displayStr(n.asNode(), nodeFmt);
+        return displayStr(n.asNode(), nodeFmtAbbrev);
     }
 
     public static String displayStr(Node n) {
-        return displayStr(n, nodeFmt);
+        return displayStr(n, nodeFmtAbbrev);
     }
 
-    public static String displayStr(Node n, NodeFormatter fmt) {
+    public static String displayStr(Node n, NodeFormatter nodeFmt) {
         IndentedLineBuffer sw = new IndentedLineBuffer() ;
         nodeFmt.format(sw, n);
         return sw.toString() ;
@@ -195,17 +210,26 @@ public class ShLib {
         return targetType.equals(TargetType.targetObjectsOf) || targetType.equals(TargetType.targetSubjectsOf);
     }
 
-    public static Node focusNode(Triple triple, Target target) {
-        switch(target.getTargetType()) {
-            //case targetClass :
-            case targetNode :
-                return target.getObject();
-            case targetObjectsOf :
-                return triple.getObject();
-            case targetSubjectsOf :
-                return triple.getSubject();
-            default :
-        }
-        return null;
+    static Set<String> rdfDatatypes = new HashSet<>();
+    static {
+        rdfDatatypes.add(RDF.dtLangString.getURI());
+        rdfDatatypes.add(RDF.dtRDFHTML.getURI());
+        rdfDatatypes.add(RDF.dtRDFJSON.getURI());
+        rdfDatatypes.add(RDF.dtXMLLiteral.getURI());
+    }
+
+    /**
+     * Test whether the IRI is a datatype that can be written in compact short form
+     * (no {@code datatype=} written, only the datatype URI). This test is used by
+     * the SHACL compact parser in {@code ShaclCompactParser.rPropertyType} and SHACL
+     * compact writer.
+     */
+    public static boolean isDatatype(String iriStr) {
+        return iriStr.startsWith(XSD.getURI()) || rdfDatatypes.contains(iriStr);
+    }
+
+    public static NodeFormatter nodeFormatter(Shapes shapes) {
+        PrefixMap pmap = PrefixMapFactory.create(shapes.getGraph().getPrefixMapping());
+        return new NodeFormatterTTL(null, pmap);
     }
 }

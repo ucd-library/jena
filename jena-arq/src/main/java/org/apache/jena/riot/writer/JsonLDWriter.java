@@ -193,7 +193,6 @@ public class JsonLDWriter extends WriterDatasetRIOTBase
         JsonLdOptions opts = getJsonLdOptions(baseURI, jenaContext) ;
 
         // we can benefit from the fact we know that there are no duplicates in the jsonld RDFDataset that we create
-        // (optimization in jsonld-java 0.8.3)
         // see https://github.com/jsonld-java/jsonld-java/pull/173
 
         // with this, we cannot call the json-ld fromRDF method that assumes no duplicates in RDFDataset
@@ -306,45 +305,42 @@ public class JsonLDWriter extends WriterDatasetRIOTBase
 
     /** Add properties to jsonld context. */
     static void addProperties(Map<String, Object> ctx, Graph g) {
-        Consumer<Triple> x = new Consumer<Triple>() {
-            @Override
-            public void accept(Triple item) {
-                Node p = item.getPredicate() ;
-                Node o = item.getObject() ;
+        Consumer<Triple> x = (Triple item) -> {
+            Node p = item.getPredicate() ;
+            Node o = item.getObject() ;
 
-                if ( p.equals(RDF.type.asNode()) )
-                    return ;
-                // JENA-1744 : split as a "Curie" (at the last / or #, regardless of th characters in a lcoal name).
-                // Curie : https://www.w3.org/TR/curie/
-                String x = SplitIRI.localname(p.getURI());
+            if ( p.equals(RDF.type.asNode()) )
+                return ;
+            // JENA-1744 : split as a "Curie" (at the last / or #, regardless of the characters in a local name).
+            // Curie : https://www.w3.org/TR/curie/
+            String uriStr = SplitIRI.localname(p.getURI());
 
-                if ( ctx.containsKey(x) ) {
-                } else if ( o.isBlank() || o.isURI() ) {
-                    // add property as a property (the object is an IRI)
+            if ( ctx.containsKey(uriStr) ) {
+            } else if ( o.isBlank() || o.isURI() ) {
+                // add property as a property (the object is an IRI)
+                Map<String, Object> x2 = new LinkedHashMap<>() ;
+                x2.put("@id", p.getURI()) ;
+                x2.put("@type", "@id") ;
+                ctx.put(uriStr, x2) ;
+            } else if ( o.isLiteral() ) {
+                String literalDatatypeURI = o.getLiteralDatatypeURI() ;
+                if ( literalDatatypeURI != null ) {
+                    // add property as a typed attribute (the object is a
+                    // typed literal)
                     Map<String, Object> x2 = new LinkedHashMap<>() ;
                     x2.put("@id", p.getURI()) ;
-                    x2.put("@type", "@id") ;
-                    ctx.put(x, x2) ;
-                } else if ( o.isLiteral() ) {
-                    String literalDatatypeURI = o.getLiteralDatatypeURI() ;
-                    if ( literalDatatypeURI != null ) {
-                        // add property as a typed attribute (the object is a
-                        // typed literal)
-                        Map<String, Object> x2 = new LinkedHashMap<>() ;
-                        x2.put("@id", p.getURI()) ;
-                        if (! isLangString(o) && ! isSimpleString(o) )
-                            // RDF 1.1 : Skip if rdf:langString or xsd:string.
-                            x2.put("@type", literalDatatypeURI) ;
-                        ctx.put(x, x2) ;
-                    } else {
-                        // add property as an untyped attribute (the object is
-                        // an untyped literal)
-                        ctx.put(x, p.getURI()) ;
-                    }
+                    if (! isLangString(o) && ! isSimpleString(o) )
+                        // RDF 1.1 : Skip if rdf:langString or xsd:string.
+                        x2.put("@type", literalDatatypeURI) ;
+                    ctx.put(uriStr, x2) ;
+                } else {
+                    // add property as an untyped attribute (the object is
+                    // an untyped literal)
+                    ctx.put(uriStr, p.getURI()) ;
                 }
             }
         } ;
-        g.find(ANY).forEachRemaining(x);
+        g.find(ANY).forEach(x);
     }
 
     /**

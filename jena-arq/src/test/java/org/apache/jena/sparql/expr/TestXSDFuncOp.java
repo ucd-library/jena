@@ -34,57 +34,85 @@ import org.junit.Test ;
 public class TestXSDFuncOp
 {
     private static final double accuracyExact_D = 0.0d ;
-    private static final double accuracyExact_F = 0.0d ;
+    private static final double accuracyExact_F = 0.0f ;
     private static final double accuracyClose_D = 0.000001d ;
     private static final double accuracyClose_F = 0.000001f ;
     
     
     @Test public void lex_decimal_1() {
-        lex_decimal(BigDecimal.valueOf(0), "0.0");
+        lex_decimal_value(BigDecimal.valueOf(0), "0.0");
     }
     
     @Test public void lex_decimal_2() {
-        lex_decimal(BigDecimal.valueOf(1), "1.0");
+        lex_decimal_value(BigDecimal.valueOf(1), "1.0");
     }
     
     @Test public void lex_decimal_3() {
-        lex_decimal(BigDecimal.valueOf(0.5), "0.5");
+        lex_decimal_value(BigDecimal.valueOf(0.5), "0.5");
     }
     
     @Test public void lex_decimal_4() {
-        lex_decimal(BigDecimal.valueOf(-0.5), "-0.5");
+        lex_decimal_value(BigDecimal.valueOf(-0.5), "-0.5");
     }
     
     @Test public void lex_decimal_5() {
-        lex_decimal(BigDecimal.valueOf(1_000_000_000_000_000L), "1000000000000000.0");
+        lex_decimal_value(BigDecimal.valueOf(1_000_000_000_000_000L), "1000000000000000.0");
     }
     
     @Test public void lex_decimal_6() {
-        lex_decimal(BigDecimal.valueOf(-1_000_000_000_000_000L), "-1000000000000000.0");
+        lex_decimal_value(BigDecimal.valueOf(-1_000_000_000_000_000L), "-1000000000000000.0");
     }
 
-    @Test public void lex_decimal_7() {
-        lex_decimal("0.0","0.0");
+    @Test public void lex_decimal_canonical_1() {
+        lex_decimal_canonical("+.0","0.0");
     }
     
-    @Test public void lex_decimal_8() {
+    @Test public void lex_decimal_canonical_2() {
+        lex_decimal_canonical("-.0","0.0");
+    }
+
+    @Test public void lex_decimal_canonical_3() {
+        lex_decimal_canonical("0010","10.0");
+    }
+
+    @Test public void lex_decimal_canonical_4() {
+        lex_decimal_canonical("0012.0000","12.0");
+    }
+    
+    @Test public void lex_decimal_canonical_5() {
+        lex_decimal_canonical("-0012.0000","-12.0");
+    }
+
+    
+    // Exact given lexical form preserved.
+    @Test public void lex_decimal_nodevalue_1() {
+        lex_decimal_nodevalue("0.0","0.0");
+    }
+    
+    @Test public void lex_decimal_nodevalue_2() {
         // As input.
-        lex_decimal("0.","0.");
+        lex_decimal_nodevalue("0.","0.");
     }
     
-    @Test public void lex_decimal_9() {
+    @Test public void lex_decimal_nodevalue3() {
         // As input.
-        lex_decimal("+.0","+.0");
+        lex_decimal_nodevalue("+.0","+.0");
     }
     
-    private static void lex_decimal(BigDecimal decimal, String expected) {
+    private static void lex_decimal_value(BigDecimal decimal, String expected) {
         String lex = XSDFuncOp.canonicalDecimalStr(decimal);
         assertEquals(expected, lex);
     }
     
-    private static void lex_decimal(String input, String expected) {
+    private static void lex_decimal_nodevalue(String input, String expected) {
         NodeValue nv = NodeValue.makeDecimal(input);
         String lex = nv.asString(); 
+        assertEquals(expected, lex);
+    }
+
+    private static void lex_decimal_canonical(String input, String expected) {
+        BigDecimal decimal = new BigDecimal(input);
+        String lex = XSDFuncOp.canonicalDecimalStr(decimal);
         assertEquals(expected, lex);
     }
 
@@ -262,16 +290,57 @@ public class TestXSDFuncOp
         assertEquals("Wrong result", 12.5, r.getDecimal().doubleValue(), accuracyExact_D) ;
     }
 
+    private static String divideDecimal(String v1, String v2, String v3) {
+        NodeValue nv1 = NodeValue.makeDecimal(v1) ;
+        NodeValue nv2 = NodeValue.makeDecimal(v2) ;
+        NodeValue nv3 = NodeValue.makeDecimal(v3) ;
+        NodeValue r = XSDFuncOp.numDivide(nv1, nv2) ;
+        assertTrue("Not a decimal: "+r, r.isDecimal()) ;
+        // sameAv (value) test : does not test lexical form or datatype.
+        assertTrue("Wrong result : expected="+r+" : got="+nv3, NodeValue.sameAs(r, nv3));
+        return r.getNode().getLiteralLexicalForm();
+    }
+    
+    @Test public void testDivideDecimal1() {
+        divideDecimal("1", "10", "0.1");
+    }
+    
+    @Test public void testDivideDecimal2() {
+        divideDecimal("1", "2", "0.5");
+    }
+
+    @Test public void testDivideDecimal3() {
+        // Depends on XSDFuncOp.DIVIDE_PRECISION = 24
+        String x = divideDecimal("1", "3", "0.333333333333333333333333");
+        assertEquals("Wrong lexical form length", 26, x.length());
+    }
+
+    @Test public void testDivideDecimal4() {
+        String x = divideDecimal("0", "3", "0");
+        assertEquals("Wrong lexical form", "0.0", x); 
+    }
+
+    // JENA-1943 : If exact, return more than DIVIDE_PRECISION
+    @Test public void testDivideDecimal5() {
+        String x = divideDecimal("1", "10000000000000000000000000", "0.0000000000000000000000001");
+        // More than 2 (for the "0.") plus XSDFuncOp.DIVIDE_PRECISION = 24 
+        assertEquals("Wrong length lexical form", 27, x.length());
+    }
+    
+    // JENA-1943
+    @Test public void testDivideDecimal6() {
+        String x = divideDecimal("1", "10000000000000000000000000000", "0.0000000000000000000000000001");
+        // Exact
+        assertEquals("Wrong length lexical form", 30, x.length());
+    }
+    
     // divide errors
-    @Test public void testDivideByZero1()
-    {
+    @Test(expected=ExprEvalException.class)
+    public void testDivideByZero1()
+    {   
         NodeValue nv1 = NodeValue.makeInteger(1) ;
         NodeValue nv2 = NodeValue.makeInteger(0) ;
-        try {
-            NodeValue r = XSDFuncOp.numDivide(nv1, nv2) ;
-            fail("No expection from .divide") ;
-        } catch (ExprEvalException ex)
-        { }
+        NodeValue r = XSDFuncOp.numDivide(nv1, nv2) ;
     }
     
     @Test public void testDivideByZero2()
@@ -292,6 +361,22 @@ public class TestXSDFuncOp
         assertTrue("Not a -INF: "+r, r.getDouble()==Double.NEGATIVE_INFINITY) ;
     }
     
+    @Test(expected=ExprEvalException.class)
+    public void testDivideByZero5()
+    {
+        NodeValue nv1 = NodeValue.makeInteger(1) ;
+        NodeValue nv2 = NodeValue.makeDecimal(0) ;
+        NodeValue r = XSDFuncOp.numDivide(nv1, nv2) ;
+    }
+
+    @Test(expected=ExprEvalException.class)
+    public void testDivideByZero6()
+    {
+        NodeValue nv1 = NodeValue.makeDecimal(1) ;
+        NodeValue nv2 = NodeValue.makeDecimal(0) ;
+        NodeValue r = XSDFuncOp.numDivide(nv1, nv2) ;
+    }
+
     @Test public void testSubtractDoubleDecimal()
     {
         NodeValue nv1 = NodeValue.makeDouble(4.5) ;
@@ -720,7 +805,7 @@ public class TestXSDFuncOp
         Node n = SSE.parseNode(str) ;
         return NodeValue.makeNode(n) ; 
     }
-    // abs is a test of Function.unaryOp machinary 
+    // abs is a test of Function.unaryOp machinery 
     @Test public void testAbs1()
     {
         NodeValue nv = NodeValue.makeInteger(2) ;

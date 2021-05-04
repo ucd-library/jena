@@ -25,7 +25,6 @@ options
        // \ u processed after parsing.
        // strings, prefix names, IRIs
        JAVA_UNICODE_ESCAPE   = false ;
-       // ???
        UNICODE_INPUT         = true ;
 
   STATIC                = false ;
@@ -52,13 +51,13 @@ PARSER_BEGIN(ShaclCompactParserJJ)
  * limitations under the License.
  */
 
-package org.apache.jena.shacl.compact.parser;
+package org.apache.jena.shacl.compact.reader.parser;
 
 import java.util.List;
 import java.util.ArrayList;
 import org.apache.jena.graph.*;
 import org.apache.jena.sparql.path.*;
-import org.apache.jena.shacl.compact.*;
+import org.apache.jena.shacl.compact.reader.*;
 
 public class ShaclCompactParserJJ extends ShaclCompactParser
 {}
@@ -90,14 +89,15 @@ void directive() : {}
 void baseDecl() : { String iri ; }
 {
   <BASE> iri = IRIREF()
-  { getPrologue().setBaseURI(iri) ; }
+  { rBase(iri) ; }
 }
 
 void prefixDecl() : { Token t ; String iri ; }
 {
     <PREFIX> t = <PNAME_NS> iri = IRIREF()
-      { String s = fixupPrefix(t.image, t.beginLine, t.beginColumn) ;
-        getPrologue().setPrefix(s, iri) ; }
+    { String s = fixupPrefix(t.image, t.beginLine, t.beginColumn) ;
+      rPrefix(s, iri);
+    }
 }
 
 void importDecl() : { String iri ; }
@@ -139,7 +139,11 @@ void nodeShapeBody() : {}
 void constraint() : { }
 {
   { startConstraint(); }
-  ( (nodeOr())+ | propertyShape() )
+  ( (nodeOr())+ | propertyShape()
+// <EXT>
+    | shapeRef(false)
+// </EXT>
+  )
   { finishConstraint() ; }
   <DOT>
 }
@@ -216,7 +220,7 @@ void propertyNot() : { boolean b = false; }
 void propertyAtom() : { }
 {
   // Work on currentPropertyShape()
-  propertyType() | nodeKind() | shapeRef() | propertyValue() |
+  propertyType() | nodeKind() | shapeRef(true) | propertyValue() |
      ( { startNestedPropertyAtom(); } nodeShapeBody() { finishNestedPropertyAtom(); })
 }
 
@@ -248,7 +252,7 @@ void nodeKind() : { Token t; }
   { rNodeKind(t.image); }
 }
 
-void shapeRef() : { Token t; String iriStr; }
+void shapeRef(boolean inPropertyShape) : { Token t; String iriStr; }
 {
   // consistent WS handling.?
   ( t = <ATPNAME_LN>
@@ -257,8 +261,7 @@ void shapeRef() : { Token t; String iriStr; }
   { iriStr = resolvePName(t.image.substring(1), t.beginLine, t.beginColumn) ; }
   | <AT> iriStr= IRIREF()
   )
-  //<AT> iriStr = iri()
-  { rShapeRef(iriStr); }
+  { rShapeRef(inPropertyShape, iriStr); }
 }
 
 void propertyValue() : { String s; Node n; List<Node> x; }
@@ -280,6 +283,10 @@ String nodeParam() : { Token t ;}
 {
   (
     t = "targetNode" | t = "targetObjectsOf" | t = "targetSubjectsOf" |
+// <EXT>
+    // Extension for symmetry!
+    t = "targetClass" |
+// </EXT>
     t = "deactivated" | t = "severity" | t = "message" |
     t = "class" | t = "datatype" | t = "nodeKind" |
     t = "minExclusive" | t = "minInclusive" | t = "maxExclusive" | t = "maxInclusive" |
@@ -300,6 +307,11 @@ String propertyParam() : { Token t; }
     t = "equals" | t = "disjoint" | t = "lessThan" | t = "lessThanOrEquals" |
     t = "qualifiedValueShape" | t = "qualifiedMinCount" | t = "qualifiedMaxCount" | t = "qualifiedValueShapesDisjoint" |
     t = "closed" | t = "ignoredProperties" | t = "hasValue" | t = "in"
+// <EXT>
+        | t = "group" | t = "order"
+        | t = "name"  | t = "description"
+        | t = "defaultValue"
+// </EXT>
   )
   { return t.image; }
 }
@@ -421,7 +433,7 @@ Node booleanLiteral() : {}
    <FALSE> { return XSD_FALSE ; }
 }
 
-Node numericLiteral() : { Token t ;}
+Node numericLiteral() : { Token t ; }
 {
    t = <INTEGER>  { return createLiteralInteger(t.image) ; }
  | t = <DECIMAL>  { return createLiteralDecimal(t.image) ; }
@@ -527,10 +539,12 @@ TOKEN:
 | <LBRACKET         : "[" >
 | <RBRACKET         : "]" >
 
-| <#UCHAR              : "\\" ( "u" <HEX> <HEX> <HEX> <HEX> | "U" <HEX> <HEX> <HEX> <HEX> <HEX> <HEX> <HEX> <HEX> ) >
-| <IRIref              : "<"
-                         (~[ ">","<", "\"", "{", "}", "^", "\\", "|", "`","\u0000"-"\u0020"] | <UCHAR>)*
-                         ">" >
+| <IRIref     : "<"
+                  (~[ ">","<", "\"", "{", "}", "^", "\\", "|", "`","\u0000"-"\u0020"]
+                  | <UCHAR>
+                  )*
+                 ">" >
+                 
 | <PNAME_NS            : (<PN_PREFIX>)? ":" >
 | <PNAME_LN            : <PNAME_NS> <PN_LOCAL> >
 
@@ -540,7 +554,11 @@ TOKEN:
 
 | <#QUOTE_3D: "\"\"\"">
 | <#QUOTE_3S: "'''">
-| <ECHAR : "\\" ( "t"|"b"|"n"|"r"|"f"|"\\"|"\""|"'") >
+
+| < #ECHAR:          "\\" ( "t"|"b"|"n"|"r"|"f"|"\\"|"\""|"'") >
+| < #UCHAR:          <UCHAR4> | <UCHAR8> >
+| < #UCHAR4:         "\\" "u" <HEX> <HEX> <HEX> <HEX> >
+| < #UCHAR8:         "\\" "U" <HEX> <HEX> <HEX> <HEX> <HEX> <HEX> <HEX> <HEX> >
 
 | <STRING_LITERAL1: 
       // Single quoted string
@@ -556,16 +574,16 @@ TOKEN:
      <QUOTE_3D> 
       ( ("\"" | "\"\"")? (~["\"","\\"] | <ECHAR> | <UCHAR>))*
      <QUOTE_3D> >
+     
+| <#DIGITS:        (["0"-"9"])+>
+| <INTEGER:        (<PLUS>|<MINUS>)? <DIGITS> >
+| <DECIMAL:        (<PLUS>|<MINUS>)? (<DIGITS>)? "." <DIGITS> >
+| <DOUBLE:         (<PLUS>|<MINUS>)?
+                     ( (["0"-"9"])+ "." (["0"-"9"])* <EXPONENT>
+                     | "." (["0"-"9"])+ (<EXPONENT>)
+			         | (["0"-"9"])+ <EXPONENT>
+                     ) >
 
-| <#DIGITS             : (["0"-"9"])+>
-| <INTEGER             : (<PLUS>|<MINUS>)? <DIGITS> >
-| <DECIMAL             : (<PLUS>|<MINUS>)? (<DIGITS>)? "." <DIGITS> >
-| <DOUBLE              : (<PLUS>|<MINUS>)?
-                          ( (["0"-"9"])+ "." (["0"-"9"])* <EXPONENT>
-                          | "." (["0"-"9"])+ (<EXPONENT>)
-			              | (["0"-"9"])+ <EXPONENT>
-                          ) >
-			 
 | <#EXPONENT           : ["e","E"] (["+","-"])? (["0"-"9"])+ >
 
 | <LANGTAG: <AT> (<A2Z>)+("-" (<A2ZN>)+)* >
@@ -584,7 +602,7 @@ TOKEN:
   <#PN_CHARS_U: <PN_CHARS_BASE> | "_" >
 |
   <#PN_CHARS: (<PN_CHARS_U> | "-" | ["0"-"9"] | "\u00B7" |
-              ["\u0300"-"\u036F"] | ["\u203F"-"\u2040"] ) >
+               ["\u0300"-"\u036F"] | ["\u203F"-"\u2040"] ) >
 |
   // No leading "_", no trailing ".", can have dot inside prefix name.
   <#PN_PREFIX: <PN_CHARS_BASE> ((<PN_CHARS>|".")* <PN_CHARS>)?  >

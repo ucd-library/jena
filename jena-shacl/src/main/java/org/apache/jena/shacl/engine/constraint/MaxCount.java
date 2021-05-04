@@ -18,7 +18,10 @@
 
 package org.apache.jena.shacl.engine.constraint;
 
+import org.apache.jena.atlas.io.IndentedWriter;
+import org.apache.jena.atlas.lib.InternalErrorException;
 import org.apache.jena.graph.Node;
+import org.apache.jena.riot.out.NodeFormatter;
 import org.apache.jena.shacl.vocabulary.SHACL;
 
 /** sh:maxCount */
@@ -28,9 +31,20 @@ public class MaxCount extends CardinalityConstraint {
         super(-1, maxCardinality);
     }
 
+    public int getMaxCount() {
+        return super.maxCount;
+    }
+    
+
     @Override
     public Node getComponent() {
         return SHACL.MaxCountConstraintComponent;
+    }
+
+    // Special syntax. Handled in ShapeOutputVisitor
+    @Override
+    public void printCompact(IndentedWriter out, NodeFormatter nodeFmt) {
+        throw new InternalErrorException("Call to MaxCount/compact syntax");
     }
 
     @Override

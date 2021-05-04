@@ -23,7 +23,7 @@
   <artifactId>jena</artifactId>
   <packaging>pom</packaging>
   <url>https://jena.apache.org/</url>
-  <version>3.16.0-SNAPSHOT</version>
+  <version>3.17.0</version>
 
   <parent>
     <groupId>org.apache</groupId>
@@ -47,18 +47,18 @@
     <connection>scm:git:https://gitbox.apache.org/repos/asf/jena.git</connection>
     <developerConnection>scm:git:https://gitbox.apache.org/repos/asf/jena.git</developerConnection>
     <url>https://gitbox.apache.org/repos/asf/jena.git</url>
-    <tag>HEAD</tag>
+    <tag>jena-3.17.0</tag>
   </scm>
 
    <properties>
-    <ver.junit>4.12</ver.junit>  
+    <ver.junit>4.13.1</ver.junit>  
 
     <ver.slf4j>1.7.30</ver.slf4j>
-    <ver.log4j2>2.13.3</ver.log4j2>
-    <ver.shade-plugin>3.2.1</ver.shade-plugin>
+    <ver.log4j2>2.14.0</ver.log4j2>
+    <ver.shade-plugin>3.2.4</ver.shade-plugin>
 
-    <ver.jetty>9.4.26.v20200117</ver.jetty>
-    <ver.shiro>1.5.1</ver.shiro>
+    <ver.jetty>9.4.34.v20201102</ver.jetty>
+    <ver.shiro>1.7.0</ver.shiro>
 
     <ver.libthrift>0.13.0</ver.libthrift>
 
@@ -70,37 +70,39 @@
          POM for the correct dependency versions
          and use that or later.
     -->
-    <ver.jsonldjava>0.12.5</ver.jsonldjava>
-    <ver.jackson>2.10.1</ver.jackson>
+    <ver.jsonldjava>0.13.2</ver.jsonldjava>
+    <ver.jackson>2.11.3</ver.jackson>
     <ver.jackson-databind>${ver.jackson}</ver.jackson-databind>
 
-    <ver.commonsio>2.6</ver.commonsio>
+    <ver.commonsio>2.8.0</ver.commonsio>
     <ver.commonscli>1.4</ver.commonscli>
-    <ver.commonslang3>3.10</ver.commonslang3>
+    <ver.commonslang3>3.11</ver.commonslang3>
     <ver.commonsrdf>0.5.0</ver.commonsrdf>
     <ver.commonscsv>1.8</ver.commonscsv>
-    <ver.commons-codec>1.14</ver.commons-codec>
+    <ver.commons-codec>1.15</ver.commons-codec>
     <ver.commons-compress>1.20</ver.commons-compress>
 
     <ver.dexxcollection>0.7</ver.dexxcollection>
 
-    <ver.httpclient>4.5.10</ver.httpclient>
-    <ver.httpcore>4.4.9</ver.httpcore>
+    <ver.httpclient>4.5.13</ver.httpclient>
+    <ver.httpcore>4.4.13</ver.httpcore>
     <!-- Normally, these are the same as the above
          In the case of 4.2.6, there isn't a httpcore-osgi.
     -->
     <ver.httpcore-osgi>${ver.httpcore}</ver.httpcore-osgi>
     <ver.httpclient-osgi>${ver.httpclient}</ver.httpclient-osgi>
     
-    <ver.lucene>7.7.2</ver.lucene>
+    <ver.lucene>7.7.3</ver.lucene>
     <!-- Align to Lucene version -->
-    <ver.elasticsearch>6.8.6</ver.elasticsearch>
+    <ver.elasticsearch>6.8.9</ver.elasticsearch>
 
-    <ver.spatial4j>0.6</ver.spatial4j>
+    <ver.spatial4j>0.7</ver.spatial4j>
 
-    <ver.mockito>1.9.5</ver.mockito>
-    <ver.awaitility>3.1.0</ver.awaitility>
-    <ver.micrometer>1.2.1</ver.micrometer>
+    <ver.mockito>1.10.19</ver.mockito>
+    <ver.awaitility>4.0.3</ver.awaitility>
+    <ver.micrometer>1.6.1</ver.micrometer>
+
+    <ver.graalvm>20.2.0</ver.graalvm>
 
     <jdk.version>1.8</jdk.version>
     <targetJdk>${jdk.version}</targetJdk>
@@ -559,6 +561,18 @@
       </dependency>
 
       <dependency>
+        <groupId>org.graalvm.js</groupId>
+        <artifactId>js</artifactId>
+        <version>${ver.graalvm}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.graalvm.js</groupId>
+        <artifactId>js-scriptengine</artifactId>
+        <version>${ver.graalvm}</version>
+      </dependency>
+
+      <dependency>
         <groupId>org.xenei</groupId>
         <artifactId>junit-contracts</artifactId>
         <version>${ver.contract.tests}</version>
@@ -602,6 +616,7 @@
         <artifactId>micrometer-registry-prometheus</artifactId>
           <version>${ver.micrometer}</version>
       </dependency>
+
     </dependencies>
 
   </dependencyManagement>
@@ -648,7 +663,7 @@
       <plugin>
         <groupId>org.apache.rat</groupId>
         <artifactId>apache-rat-plugin</artifactId>
-        <version>0.12</version>
+        <version>0.13</version>
         <executions>
           <execution>
             <id>rat-checks</id>
@@ -665,7 +680,9 @@
             <exclude>**/.project</exclude>
             <exclude>**/.settings/**</exclude>
             <exclude>**/.classpath</exclude>
-            <exclude>**/README.*</exclude>
+            <exclude>**/*.recommenders/**/*</exclude>
+            <exclude>**/target/**/*</exclude>
+            <exclude>**/README*</exclude>
             <!--
                 jena-core exclusions
             -->
@@ -677,13 +694,17 @@
             <exclude>**/dist/ABOUT</exclude>
             <exclude>**/SEE_FUSEKI2</exclude>
             <!-- 
-                 Need to exclude JS and CSS since much of it comes from other Apache licensed projects 
-                 e.g. Bootstrap, Qonsole
-                 
+                 Need to exclude JS and CSS since much of it comes from 
+                 other projects
             -->
             <exclude>**/src/main/webapp/css/*</exclude>
             <exclude>**/src/main/webapp/fonts/*</exclude>
             <exclude>**/src/main/webapp/js/**/*</exclude>
+
+            <!-- SPARQLer (in jena-fuseki-main) -->
+            <exclude>**/sparqler/data/empty.nt</exclude>
+            <exclude>**/sparqler/pages/robots.txt</exclude>
+            <exclude>**/sparqler/pages/crossdomain.xml</exclude>
             
             <!-- General exclusions -->
             <!-- 
@@ -696,8 +717,8 @@
             <!--
                 Javadoc add-ons files are required to be simple and our javadoc configuration
                 will ensure appropriate license and copyright statements are inserted
-                into generated documentation anyway so no need to put license statements in these
-                files
+                into generated documentation anyway so no need to put license statements
+                in these files
             -->
             <exclude>**/src/main/**/*.html</exclude>
             <exclude>**/src/**/package-info.java</exclude>
@@ -730,6 +751,7 @@
                 (e.g. W3C Software Licence, W3C Test Suite License) as
                 noted in the code tree.
             -->
+            <exclude>**/src/test/files/**/*</exclude>
             <exclude>**/src/test/resources/**/*</exclude>
             <exclude>**/testing/**/*</exclude>
 
@@ -741,11 +763,7 @@
             <exclude>**/run/**/*</exclude>
             <!-- Cached classpath for commands - autogenerated -->
             <exclude>**/*.classpath</exclude>
-            <!-- Cached recommenders by Eclipse  - autogenerated -->
-            <exclude>**/*.recommenders/**/*</exclude>
 
-            <!-- Exclude anything created during the build (plugin generated files) ->-->
-            <exclude>**/target/**/*</exclude>
             <!-- MSHADE-124 -->
             <exclude>**/dependency-reduced-pom.xml</exclude>
             <exclude>.travis.yml</exclude>
@@ -774,13 +792,19 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-assembly-plugin</artifactId>
-          <version>3.2.0</version>
+          <version>3.3.0</version>
         </plugin>
 
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
           <version>3.8.1</version>
+          <!--
+          <configuration>
+            <release>11</release>
+          </configuration>
+          -->
+          <!-- Java8 compiler for Java8 output -->
           <configuration>
             <showDeprecation>false</showDeprecation>
             <encoding>UTF-8</encoding>
@@ -828,7 +852,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-javadoc-plugin</artifactId>
-          <version>3.1.1</version>
+          <version>3.2.0</version>
           <executions>
             <execution>
               <id>attach-javadocs</id>
@@ -934,7 +958,7 @@
         <plugin>
           <groupId>org.apache.felix</groupId>
           <artifactId>maven-bundle-plugin</artifactId>
-          <version>4.2.0</version>
+          <version>5.1.1</version>
           <extensions>true</extensions>
         </plugin>
 
@@ -947,7 +971,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-war-plugin</artifactId>
-          <version>3.2.1</version>
+          <version>3.3.1</version>
         </plugin>
 
         <!--
@@ -1051,47 +1075,6 @@
         </configuration>
       </plugin>
 
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>cobertura-maven-plugin</artifactId>
-        <version>2.7</version>
-        <configuration>
-          <instrumentation>
-            <ignores>
-              <ignore>org.slf4j.*</ignore>
-            </ignores>
-          </instrumentation>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-checkstyle-plugin</artifactId>
-        <version>2.17</version>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jxr-plugin</artifactId>
-        <version>2.5</version>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-pmd-plugin</artifactId>
-        <version>3.8</version>
-        <configuration>
-          <linkXref>true</linkXref>
-          <sourceEncoding>utf-8</sourceEncoding>
-          <minimumTokens>100</minimumTokens>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>com.github.spotbugs</groupId>
-        <artifactId>spotbugs-maven-plugin</artifactId>
-        <version>3.1.1</version>
-      </plugin>
     </plugins>
   </reporting>
 

@@ -20,13 +20,17 @@ package org.apache.jena.shacl.engine.constraint;
 
 import static org.apache.jena.shacl.lib.ShLib.displayStr;
 
+import org.apache.jena.atlas.io.IndentedWriter;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
+import org.apache.jena.riot.out.NodeFormatter;
+import org.apache.jena.shacl.compact.writer.CompactWriter;
 import org.apache.jena.shacl.engine.ValidationContext;
 import org.apache.jena.shacl.parser.Shape;
 import org.apache.jena.shacl.validation.ReportItem;
 import org.apache.jena.shacl.validation.ValidationProc;
 import org.apache.jena.shacl.vocabulary.SHACL;
+import org.apache.jena.sparql.util.FmtUtils;
 
 /** sh:node */
 public class ShNode extends ConstraintOp1 {
@@ -42,7 +46,7 @@ public class ShNode extends ConstraintOp1 {
 
     @Override
     public ReportItem validate(ValidationContext vCxt, Graph data, Node node) {
-        ValidationContext vCxt2 = new ValidationContext(vCxt);
+        ValidationContext vCxt2 = ValidationContext.create(vCxt);
         ValidationProc.execValidateShape(vCxt2, data, other, node);
         boolean innerConforms = vCxt2.generateReport().conforms();
         if ( innerConforms )
@@ -52,7 +56,23 @@ public class ShNode extends ConstraintOp1 {
     }
 
     @Override
+    public void printCompact(IndentedWriter out, NodeFormatter nodeFmt) {
+        if ( other.getShapeNode().isURI() ) {
+            out.print("@");
+            nodeFmt.format(out, other.getShapeNode());
+            return;
+        }
+        // Inline.
+        out.print("{ ");
+        out.incIndent();
+        out.println();
+        CompactWriter.output(out, nodeFmt, other);
+        out.decIndent();
+        out.println(" }");
+    }
+
+    @Override
     public String toString() {
-        return "Node";
+        return "Node["+FmtUtils.stringForNode(other.getShapeNode())+"]";
     }
 }

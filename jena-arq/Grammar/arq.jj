@@ -18,8 +18,8 @@
 
 options
 {
-    JAVA_UNICODE_ESCAPE = true ;
-    UNICODE_INPUT = false ;
+    JAVA_UNICODE_ESCAPE = false ;
+    UNICODE_INPUT = true ;
   STATIC = false ;
 }
 PARSER_BEGIN(ARQParser)
@@ -69,16 +69,16 @@ void Prologue() : {}
 {
   ( BaseDecl() | PrefixDecl() )*
 }
-void BaseDecl() : { String iri ; }
+void BaseDecl() : { Token t ; String iri ; }
 {
-  <BASE> iri = IRIREF()
-  { getPrologue().setBaseURI(iri) ; }
+  t = <BASE> iri = IRIREF()
+  { setBase(iri, t.beginLine, t.beginColumn ) ; }
 }
 void PrefixDecl() : { Token t ; String iri ; }
 {
     <PREFIX> t = <PNAME_NS> iri = IRIREF()
-      { String s = fixupPrefix(t.image, t.beginLine, t.beginColumn) ;
-        getPrologue().setPrefix(s, iri) ; }
+    { String s = fixupPrefix(t.image, t.beginLine, t.beginColumn);
+      setPrefix(s, iri, t.beginLine, t.beginColumn) ; }
 }
 void SelectQuery() : { }
 {
@@ -194,7 +194,7 @@ void JsonClause() : {}
 void JsonObjectMember() : { Node o ; String s ; Token t; }
 {
   s = String()
-  t = < PNAME_NS > {
+  t = <PNAME_NS> {
     if ( ! t.image.equals(":") )
       throwParseException("Prefix name expression not legal at this point : "+t.image, t.beginLine, t.beginColumn) ;
   }
@@ -1489,6 +1489,7 @@ Expr Aggregate() : { Aggregator agg = null ; String sep = null ;
                      ExprList ordered = new ExprList() ;
                      Token t ; }
 {
+  { startAggregate(); }
   ( t = <COUNT> <LPAREN>
     ( <DISTINCT> { distinct = true ; } )?
     ( <STAR> | expr = Expression() )
@@ -1544,10 +1545,12 @@ Expr Aggregate() : { Aggregator agg = null ; String sep = null ;
   )
   {
     if ( ! getAllowAggregatesInExpressions() )
-           throwParseException("Aggregate expression not legal at this point",
-                                t.beginLine, t.beginColumn) ;
+        throwParseException("Aggregate expression not legal at this point", t.beginLine, t.beginColumn) ;
+    if ( getAggregateDepth() > 1 )
+        throwParseException("Nested aggregate in expression not legal", t.beginLine, t.beginColumn) ;
   }
   { Expr exprAgg = getQuery().allocAggregate(agg) ;
+    finishAggregate();
     return exprAgg ; }
 }
 Expr iriOrFunction() : { String iri ; Args a = null ; }
@@ -1661,8 +1664,11 @@ TOKEN: {
 }
 TOKEN:
 {
-   <IRIref: "<" (~[ ">","<", "\"", "{", "}", "^", "\\", "|", "`",
-                      "\u0000"-"\u0020"])* ">" >
+   <IRIref: "<"
+                ( ~[ ">","<", "\"", "{", "}", "^", "\\", "|", "`", "\u0000"-"\u0020"]
+                | <UCHAR>
+                )*
+              ">" >
 | <PNAME_NS: (<PN_PREFIX>)? ":" >
 | <PNAME_LN: <PNAME_NS> <PN_LOCAL> >
 | <BLANK_NODE_LABEL: "_:" (<PN_CHARS_U> | ["0"-"9"]) ((<PN_CHARS>|".")* <PN_CHARS>)? >
@@ -1835,17 +1841,20 @@ TOKEN :
 | < #QUOTE_3D: "\"\"\"">
 | < #QUOTE_3S: "'''">
 | <ECHAR: "\\" ( "t"|"b"|"n"|"r"|"f"|"\\"|"\""|"'") >
+| < #UCHAR: <UCHAR4> | <UCHAR8> >
+| < #UCHAR4: "\\" "u" <HEX> <HEX> <HEX> <HEX> >
+| < #UCHAR8: "\\" "U" <HEX> <HEX> <HEX> <HEX> <HEX> <HEX> <HEX> <HEX> >
 | < STRING_LITERAL1:
-      "'" ( (~["'","\\","\n","\r"]) | <ECHAR> )* "'" >
+      "'" ( (~["'","\\","\n","\r"]) | <ECHAR> | <UCHAR> )* "'" >
 | < STRING_LITERAL2:
-      "\"" ( (~["\"","\\","\n","\r"]) | <ECHAR> )* "\"" >
+      "\"" ( (~["\"","\\","\n","\r"]) | <ECHAR> | <UCHAR> )* "\"" >
 | < STRING_LITERAL_LONG1:
      <QUOTE_3S>
-      ( ("'" | "''")? (~["'","\\"] | <ECHAR> ))*
+      ( ("'" | "''")? (~["'","\\"] | <ECHAR> | <UCHAR> ))*
      <QUOTE_3S> >
 | < STRING_LITERAL_LONG2:
      <QUOTE_3D>
-      ( ("\"" | "\"\"")? (~["\"","\\"] | <ECHAR> ))*
+      ( ("\"" | "\"\"")? (~["\"","\\"] | <ECHAR> | <UCHAR> ))*
      <QUOTE_3D> >
 }
 TOKEN :

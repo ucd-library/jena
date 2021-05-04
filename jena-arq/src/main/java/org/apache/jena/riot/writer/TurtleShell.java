@@ -34,7 +34,7 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Node_Triple;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.riot.RIOT;
-import org.apache.jena.riot.other.GLib;
+import org.apache.jena.riot.other.G;
 import org.apache.jena.riot.out.NodeFormatter;
 import org.apache.jena.riot.out.NodeFormatterTTL;
 import org.apache.jena.riot.out.NodeFormatterTTL_MultiLine;
@@ -83,7 +83,8 @@ public abstract class TurtleShell {
     }
 
     protected void writeBase(String base) {
-        RiotLib.writeBase(out, base, prefixStyle==DirectiveStyle.SPARQL) ;
+        if ( context == null || ! context.isTrue(RIOT.symTurtleOmitBase) )
+            RiotLib.writeBase(out, base, prefixStyle==DirectiveStyle.SPARQL) ;
     }
 
     protected void writePrefixes(PrefixMap prefixMap) {
@@ -203,21 +204,14 @@ public abstract class TurtleShell {
 
         /** Get exactly one triple or null for none or more than one. */
         private Triple triple1(Node s, Node p, Node o) {
-            if ( dsg != null )
-                return RiotLib.triple1(dsg, s, p, o) ;
+            if ( dsg != null ) {
+                Quad q = G.getOneOrNull(dsg, Node.ANY, s, p, o) ;
+                if ( q == null )
+                    return null;
+                return q.asTriple();
+            }
             else
-                return RiotLib.triple1(graph, s, p, o) ;
-        }
-
-        /** Get exactly one triple, or null for none or more than one. */
-        private Triple triple1(DatasetGraph dsg, Node s, Node p, Node o) {
-            Iterator<Quad> iter = dsg.find(ANY, s, p, o) ;
-            if ( !iter.hasNext() )
-                return null ;
-            Quad q = iter.next() ;
-            if ( iter.hasNext() )
-                return null ;
-            return q.asTriple() ;
+                return G.getOneOrNull(graph, s, p, o) ;
         }
 
         private long countTriples(Node s, Node p, Node o) {
@@ -325,7 +319,7 @@ public abstract class TurtleShell {
         }
 
         private Iterator<Node> listSubjects() {
-            return GLib.listSubjects(graph) ;
+            return G.listSubjects(graph) ;
         }
 
         // ---- Data access

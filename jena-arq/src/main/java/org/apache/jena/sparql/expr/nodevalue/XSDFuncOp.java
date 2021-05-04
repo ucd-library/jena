@@ -18,12 +18,7 @@
 
 package org.apache.jena.sparql.expr.nodevalue;
 
-import static javax.xml.datatype.DatatypeConstants.DAYS ;
-import static javax.xml.datatype.DatatypeConstants.HOURS ;
-import static javax.xml.datatype.DatatypeConstants.MINUTES ;
-import static javax.xml.datatype.DatatypeConstants.MONTHS ;
-import static javax.xml.datatype.DatatypeConstants.SECONDS ;
-import static javax.xml.datatype.DatatypeConstants.YEARS ;
+import static javax.xml.datatype.DatatypeConstants.*;
 import static org.apache.jena.sparql.expr.nodevalue.NodeFunctions.checkAndGetStringLiteral ;
 import static org.apache.jena.sparql.expr.nodevalue.NodeFunctions.checkTwoArgumentStringLiterals ;
 import static org.apache.jena.sparql.expr.nodevalue.NumericType.OP_DECIMAL ;
@@ -33,6 +28,8 @@ import static org.apache.jena.sparql.expr.nodevalue.NumericType.OP_INTEGER ;
 
 import java.math.BigDecimal ;
 import java.math.BigInteger ;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.text.DecimalFormat ;
 import java.text.DecimalFormatSymbols ;
 import java.text.Normalizer;
@@ -49,7 +46,6 @@ import javax.xml.datatype.XMLGregorianCalendar ;
 
 import org.apache.jena.atlas.lib.IRILib ;
 import org.apache.jena.atlas.lib.StrUtils ;
-import org.apache.jena.atlas.logging.Log ;
 import org.apache.jena.datatypes.RDFDatatype ;
 import org.apache.jena.datatypes.xsd.XSDDatatype ;
 import org.apache.jena.datatypes.xsd.XSDDateTime ;
@@ -68,7 +64,9 @@ public class XSDFuncOp
 {
     private XSDFuncOp() {}
     
-    // The choice of "24" is arbitrary but more than 18 as required by F&O 
+    // The choice of "24" is arbitrary but more than 18 (XSD 1.0) or 16 XSD 1.1) as required by F&O 
+    //   F&O 3.1: section 4.2 (end intro)
+    //   https://www.w3.org/TR/xpath-functions/#op.numeric section 4.2
     private static final int DIVIDE_PRECISION = 24 ;
     // --------------------------------
     // Numeric operations
@@ -139,8 +137,6 @@ public class XSDFuncOp
                 return decimalDivide(d1, d2) ;
             }
             case OP_DECIMAL : {
-                if ( nv2.getDecimal().compareTo(BigDecimal.ZERO) == 0 )
-                    throw new ExprEvalException("Divide by zero in decimal divide") ;
                 BigDecimal d1 = nv1.getDecimal() ;
                 BigDecimal d2 = nv2.getDecimal() ;
                 return decimalDivide(d1, d2) ;
@@ -157,14 +153,16 @@ public class XSDFuncOp
     }
     
     private static NodeValue decimalDivide(BigDecimal d1, BigDecimal d2) {
+        if ( d2.equals(BigDecimal.ZERO) )
+            throw new ExprEvalException("Divide by zero in decimal divide") ;
+        BigDecimal d3;
         try {
-            BigDecimal d3 = d1.divide(d2, DIVIDE_PRECISION, BigDecimal.ROUND_FLOOR) ;
-            return canonicalDecimalNV(d3) ;
+            d3 = d1.divide(d2, MathContext.UNLIMITED);
         } catch (ArithmeticException ex) {
-            Log.warn(XSDFuncOp.class, "ArithmeticException in decimal divide - attempting to treat as doubles") ;
-            BigDecimal d3 = new BigDecimal(d1.doubleValue() / d2.doubleValue()) ;
-            return NodeValue.makeDecimal(d3) ;
+            // Does not throw ArithmeticException
+            d3 = d1.divide(d2, DIVIDE_PRECISION, RoundingMode.HALF_EVEN);
         }
+        return canonicalDecimalNV(d3) ;  
     }
 
     public static NodeValue canonicalDecimalNV(BigDecimal d) {
@@ -172,7 +170,47 @@ public class XSDFuncOp
         return NodeValue.makeNode(x, XSDDatatype.XSDdecimal) ;
     }
 
-    public static String canonicalDecimalStr(BigDecimal d) {
+    /**
+     * Decimal format, cast-to-string.
+     * <p>
+     * Decimal canonical form where integer values have no ".0" (as in XSD 1.1).
+     * <p>
+     * In XSD 2, canonical integer-valued decimal has a trailing ".0". 
+     * In F&amp;O v 3.1, xs:string cast of a decimal which integer valued, does not have the trailing ".0".  
+     */
+    public static String canonicalDecimalStrNoIntegerDot(BigDecimal bd) {
+        if ( bd.signum() == 0 )
+            return "0";
+        if ( bd.scale() <= 0 )
+            // No decimal part.
+            return bd.toPlainString();
+        return bd.stripTrailingZeros().toPlainString();
+    }
+    
+    /**
+     * Canonical decimal according to XML Schema Datatype 2.
+     * Integer-valued decimals have a trailing ".0".
+     * (In XML Schema Datatype 1.1 they did not have a ".0".)
+     * <p>
+     * Java BigDecimal.toPlainString does not produce XSD 2 compatible lexical forms for integer values. 
+     */
+    public static String canonicalDecimalStr(BigDecimal decimal) {
+        if ( decimal.signum() == 0 )
+            return "0.0";
+        if ( decimal.scale() <= 0 )
+            // No decimal part.
+            return decimal.toPlainString()+".0";
+        String str = decimal.stripTrailingZeros().toPlainString();
+        // Maybe the decimal part was only zero. 
+        int dotIdx = str.indexOf('.') ;
+        if ( dotIdx < 0 )
+            // No DOT.
+            str = str + ".0";    
+        return str;
+    }
+
+    /** Original code, with changes of JENA-1717 / Jena 3.13.0 - 2019-05 */
+    private static String canonicalDecimalStr_X(BigDecimal d) {
         String x = d.toPlainString() ;
 
         // The part after the "."
@@ -544,58 +582,69 @@ public class XSDFuncOp
     public static NodeValue substring(NodeValue nvString, NodeValue nvStart, NodeValue nvLength) {
         Node n = checkAndGetStringLiteral("substring", nvString) ;
         RDFDatatype dt = n.getLiteralDatatype() ;
-        String lang = n.getLiteralLanguage() ;
-
-        // A string of some kind.
-
         // XSD F&O:
         try {
-            // NaN, float and double.
-
             String string = n.getLiteralLexicalForm() ;
-            int start = intValueStr(nvStart, string.length() + 1) ;
+            
+            // Length in code points.
+            int cpLength = string.codePointCount(0,  string.length());
+
+            // Arguments.
+            int start = intValueStr(nvStart, cpLength + 1) ;
             int length ;
 
             if ( nvLength != null )
                 length = intValueStr(nvLength, 0) ;
-            else {
-                length = string.length() ;
-                if ( start < 0 )
-                    length = length - start ; // Address to end of string.
-            }
+            else
+                length = cpLength;
 
+            // Evaluation.
+            
+            if ( string.isEmpty() )
+                return nvString;
+            
+            // Working in codepoints indexes at this point
+            
+            // Includes negative start.
             int finish = start + length ;
 
-            // Adjust for zero and negative rules for XSD.
-            // Calculate the finish, regardless of whether start is zero of
-            // negative ...
-
-            // Adjust to java - and ensure within the string.
             // F&O strings are one-based ; convert to java, 0 based.
-
+            // Adjust to zero-offset, and ensure in-bounds -  still in codepoint indexes.
             // java needs indexes in-bounds.
-            if ( start <= 0 )
-                start = 1 ;
             start-- ;
             finish-- ;
-            if ( finish > string.length() )
-                finish = string.length() ; // Java index must be within bounds.
+            if ( start < 0 )
+                start = 0 ;
+            if ( finish > cpLength )
+                finish = cpLength ; // Java index must be within bounds.
             if ( finish < start )
                 finish = start ;
-
             if ( finish < 0 )
                 finish = 0 ;
 
-            if ( string.length() == 0 )
-                return calcReturn("", n) ;
-
-            String lex2 = string.substring(start, string.offsetByCodePoints(start, finish - start)) ;
+            // Convert to UTF-16 code units to index values for the string.substring 
+            int xs = codePointToStringIndex(string, start, cpLength);
+            int xf = codePointToStringIndex(string, finish, cpLength);
+            
+            String lex2 = string.substring(xs, xf);
+            
             return calcReturn(lex2, n) ;
         } catch (IndexOutOfBoundsException ex) {
             throw new ExprEvalException("IndexOutOfBounds", ex) ;
         }
     }
     
+    /** Convert zero-based codepoint to zero-based Java string index in-bounds.*/ 
+    private static int codePointToStringIndex(String string, int index, int cpLength) {
+        if ( index < 0 )
+            return 0;
+        
+        return (index > cpLength) 
+                    ? string.length()
+                    : string.offsetByCodePoints(0, index);
+    }
+    
+    // NaN, float and double.
     private static int intValueStr(NodeValue nv, int valueNan) {
         if ( nv.isInteger() )
             return nv.getInteger().intValue() ;
@@ -639,6 +688,7 @@ public class XSDFuncOp
         return NodeValue.booleanReturn(lex1.endsWith(lex2)) ;
     }
     
+    /** Build a NodeValue with lexical form, and same language and datatype as the Node argument */
     private static NodeValue calcReturn(String result, Node arg) {
         Node n2 = NodeFactory.createLiteral(result, arg.getLiteralLanguage(), arg.getLiteralDatatype()) ; 
         return NodeValue.makeNode(n2) ;
@@ -893,24 +943,48 @@ public class XSDFuncOp
         integerSubTypes.add(XSDDatatype.XSDnegativeInteger) ;
     }
 
-    public static boolean isNumericType(XSDDatatype xsdDatatype) {
+    public static boolean isNumericDatatype(XSDDatatype xsdDatatype) {
         if ( XSDDatatype.XSDfloat.equals(xsdDatatype) )
             return true ;
         if ( XSDDatatype.XSDdouble.equals(xsdDatatype) )
             return true ;
-        return isDecimalType(xsdDatatype) ;
+        return isDecimalDatatype(xsdDatatype) ;
     }
 
-    public static boolean isDecimalType(XSDDatatype xsdDatatype) {
+    public static boolean isDecimalDatatype(XSDDatatype xsdDatatype) {
         if ( XSDDatatype.XSDdecimal.equals(xsdDatatype) )
             return true ;
-        return isIntegerType(xsdDatatype) ;
+        return isIntegerDatatype(xsdDatatype) ;
     }
 
-    public static boolean isIntegerType(XSDDatatype xsdDatatype) {
+    public static boolean isIntegerDatatype(XSDDatatype xsdDatatype) {
         return integerSubTypes.contains(xsdDatatype) ;
     }
 
+    public static boolean isTemporalDatatype(XSDDatatype datatype) {
+        return
+            datatype.equals(XSDDatatype.XSDdateTime) ||
+            datatype.equals(XSDDatatype.XSDtime) ||
+            datatype.equals(XSDDatatype.XSDdate) ||
+            datatype.equals(XSDDatatype.XSDgYear) ||
+            datatype.equals(XSDDatatype.XSDgYearMonth) ||
+            datatype.equals(XSDDatatype.XSDgMonth) ||
+            datatype.equals(XSDDatatype.XSDgMonthDay) ||
+            datatype.equals(XSDDatatype.XSDgDay);
+    }
+
+    public static boolean isDurationDatatype(XSDDatatype datatype) {
+        return
+            datatype.equals(XSDDatatype.XSDduration) ||
+            datatype.equals(XSDDatatype.XSDyearMonthDuration) ||
+            datatype.equals(XSDDatatype.XSDdayTimeDuration );
+    }
+
+    public static boolean isBinaryDatatype(XSDDatatype datatype) {
+        return datatype.equals(XSDDatatype.XSDhexBinary) || datatype.equals(XSDDatatype.XSDbase64Binary);
+    }
+
+    
     // --------------------------------
     // Comparisons operations
     // Do not confuse with sameValueAs/notSamevalueAs
@@ -1174,37 +1248,8 @@ public class XSDFuncOp
         throw new ARQInternalErrorException("Weird boolean comparison: " + nv1 + ", " + nv2) ;
     }
 
-    public static boolean dateTimeCastCompatible(NodeValue nv, XSDDatatype xsd) {
-        return nv.hasDateTime() ;
-    }
-    
-    /** Cast a NodeValue to a date/time type (xsd dateTime, date, time, g*) according to {@literal F&O}
-     *  <a href="http://www.w3.org/TR/xpath-functions/#casting-to-datetimes">17.1.5 Casting to date and time types</a>
-     *  Throws an exception on incorrect case.
-     *   
-     *  @throws ExprEvalTypeException  
-     */
-    
-    public static NodeValue dateTimeCast(NodeValue nv, String typeURI) {
-        RDFDatatype t = NodeFactory.getType(typeURI) ;
-        return dateTimeCast(nv, t) ;
-    }
-
-    /** Cast a NodeValue to a date/time type (xsd dateTime, date, time, g*) according to {@literal F&O}
-     *  <a href="http://www.w3.org/TR/xpath-functions/#casting-to-datetimes">17.1.5 Casting to date and time types</a>
-     *  Throws an exception on incorrect case.
-     *   
-     *  @throws ExprEvalTypeException  
-     */
-    
-    public static NodeValue dateTimeCast(NodeValue nv, RDFDatatype rdfDatatype) {
-        if ( !(rdfDatatype instanceof XSDDatatype) )
-            throw new ExprEvalTypeException("Can't cast to XSDDatatype: " + nv) ;
-        XSDDatatype xsd = (XSDDatatype)rdfDatatype ;
-        return dateTimeCast(nv, xsd) ;
-    }
-
-    /** Get the timezone in XSD tiezone format (e.g. "Z" or "+01:00").
+    /**
+     * Get the timezone in XSD timezone format (e.g. "Z" or "+01:00").
      * Assumes the NodeValue is of suitable datatype.
      */
     private static String tzStrFromNV(NodeValue nv) {
@@ -1217,13 +1262,13 @@ public class XSDFuncOp
         return tzStr ;
     }
     
-    /** Cast a NodeValue to a date/time type (xsd dateTime, date, time, g*) according to {@literal F&O}
-     *  <a href="http://www.w3.org/TR/xpath-functions/#casting-to-datetimes">17.1.5 Casting to date and time types</a>
-     *  Throws an exception on incorrect case.
+    /**
+     * Cast a NodeValue to a date/time type (xsd dateTime, date, time, g*) according to {@literal F&O}
+     * <a href="http://www.w3.org/TR/xpath-functions/#casting-to-datetimes">17.1.5 Casting to date and time types</a>
+     * Throws an exception on incorrect case.
      *   
-     *  @throws ExprEvalTypeException  
+     * @throws ExprEvalTypeException  
      */
-    
     public static NodeValue dateTimeCast(NodeValue nv, XSDDatatype xsd) {
         if ( nv.isString() ) {
             String s = nv.getString() ;

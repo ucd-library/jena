@@ -27,6 +27,8 @@ import java.util.function.Predicate;
 import javax.servlet.Filter;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import org.apache.jena.atlas.lib.Pair;
 import org.apache.jena.atlas.logging.FmtLog;
@@ -38,9 +40,10 @@ import org.apache.jena.fuseki.access.DataAccessCtl;
 import org.apache.jena.fuseki.auth.Auth;
 import org.apache.jena.fuseki.auth.AuthPolicy;
 import org.apache.jena.fuseki.build.FusekiConfig;
+import org.apache.jena.fuseki.ctl.ActionMetrics;
 import org.apache.jena.fuseki.ctl.ActionPing;
 import org.apache.jena.fuseki.ctl.ActionStats;
-import org.apache.jena.fuseki.jetty.FusekiErrorHandler1;
+import org.apache.jena.fuseki.jetty.FusekiErrorHandler;
 import org.apache.jena.fuseki.jetty.JettyHttps;
 import org.apache.jena.fuseki.jetty.JettyLib;
 import org.apache.jena.fuseki.metrics.MetricsProviderRegistry;
@@ -60,10 +63,7 @@ import org.apache.jena.sys.JenaSystem;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
 import org.eclipse.jetty.security.SecurityHandler;
 import org.eclipse.jetty.security.UserStore;
-import org.eclipse.jetty.server.Connector;
-import org.eclipse.jetty.server.HttpConnectionFactory;
-import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -242,8 +242,10 @@ public class FusekiServer {
         private int                      serverHttpsPort    = -1;
         private boolean                  networkLoopback    = false;
         private boolean                  verbose            = false;
-        private boolean                  withStats          = false;
         private boolean                  withPing           = false;
+        private boolean                  withMetrics        = false;
+        private boolean                  withStats          = false;
+
         private Map<String, String>      corsInitParams     = null;
 
         // Server wide authorization policy.
@@ -273,7 +275,7 @@ public class FusekiServer {
         static {
             // This is the CrossOriginFilter default.
             corsInitParamsDft.put(CrossOriginFilter.ALLOWED_ORIGINS_PARAM, "*");
-            // Variatiosn from CrossOriginFilter defaults.
+            // Variations from CrossOriginFilter defaults.
             corsInitParamsDft.put(CrossOriginFilter.ALLOWED_METHODS_PARAM, "GET,POST,DELETE,PUT,HEAD,OPTIONS,PATCH");
             corsInitParamsDft.put(CrossOriginFilter.ALLOWED_HEADERS_PARAM,
                 "X-Requested-With, Content-Type, Accept, Origin, Last-Modified, Authorization");
@@ -403,6 +405,14 @@ public class FusekiServer {
             return this;
         }
 
+        /** Add the "/$/ping" servlet that responds to HTTP very efficiently.
+         * This is useful for testing whether a server is alive, for example, from a load balancer.
+         */
+        public Builder enablePing(boolean withPing) {
+            this.withPing = withPing;
+            return this;
+        }
+
         /** Add the "/$/stats" servlet that responds with stats about the server,
          * including counts of all calls made.
          */
@@ -411,11 +421,9 @@ public class FusekiServer {
             return this;
         }
 
-        /** Add the "/$/ping" servlet that responds to HTTP very efficiently.
-         * This is useful for testing whether a server is alive, for example, from a load balancer.
-         */
-        public Builder enablePing(boolean withPing) {
-            this.withPing = withPing;
+        /** Add the "/$/metrics" servlet that responds with Prometheus metrics about the server. */
+        public Builder enableMetrics(boolean withMetrics) {
+            this.withMetrics = withMetrics;
             return this;
         }
 
@@ -531,6 +539,7 @@ public class FusekiServer {
 
             withPing  = argBoolean(server, FusekiVocab.pServerPing,  false);
             withStats = argBoolean(server, FusekiVocab.pServerStats, false);
+            withMetrics = argBoolean(server, FusekiVocab.pServerMetrics, false);
 
             // Extract settings - the server building is done in buildSecurityHandler,
             // buildAccessControl.  Dataset and graph level happen in assemblers.
@@ -694,7 +703,7 @@ public class FusekiServer {
         }
 
         /**
-         * Add an operation to the server, together with its triggering Content-Type (may be null) and servlet handler.
+         * Add an operation to the server, together with its triggering Content-Type (which may be null) and servlet handler.
          * <p>
          * To associate an operation with a dataset, call {@link #addEndpoint} after adding the dataset.
          *
@@ -972,8 +981,10 @@ public class FusekiServer {
                 contextPath = "/" + contextPath;
             ServletContextHandler context = new ServletContextHandler();
             context.setDisplayName(Fuseki.servletRequestLogName);
-            context.setErrorHandler(new FusekiErrorHandler1());
+            context.setErrorHandler(new FusekiErrorHandler());
             context.setContextPath(contextPath);
+            // SPARQL Update by HTML - not the best way but.
+            context.setMaxFormContentSize(1024*1024);
             // securityHandler done in buildAccessControl
             return context;
         }
@@ -1001,10 +1012,13 @@ public class FusekiServer {
             addFilter(context, "/*", ff);
 
             // and then any additional servlets and filters.
-            if ( withStats )
-                addServlet(context, "/$/stats/*", new ActionStats());
             if ( withPing )
                 addServlet(context, "/$/ping", new ActionPing());
+            if ( withStats )
+                addServlet(context, "/$/stats/*", new ActionStats());
+            if ( withMetrics )
+                addServlet(context, "/$/metrics", new ActionMetrics());
+            // TODO Should we support registering other functionality e.g. /$/backup/* and /$/compact/*
 
             servlets.forEach(p-> addServlet(context, p.getLeft(), p.getRight()));
             filters.forEach (p-> addFilter(context, p.getLeft(), p.getRight()));
@@ -1015,6 +1029,33 @@ public class FusekiServer {
                 ServletHolder staticContent = new ServletHolder(staticServlet);
                 staticContent.setInitParameter("resourceBase", staticContentDir);
                 context.addServlet(staticContent, "/");
+            } else {
+                // Backstop servlet
+                // Jetty default is 404 on GET and 405 otherwise
+                HttpServlet staticServlet = new Servlet404();
+                ServletHolder staticContent = new ServletHolder(staticServlet);
+                context.addServlet(staticContent, "/");
+            }
+        }
+
+        /** 404 for HEAD/GET/POST/PUT */
+        static class Servlet404 extends HttpServlet {
+            // service()?
+            @Override
+            protected void doHead(HttpServletRequest req, HttpServletResponse resp)     { err404(req, resp); }
+            @Override
+            protected void doGet(HttpServletRequest req, HttpServletResponse resp)      { err404(req, resp); }
+            @Override
+            protected void doPost(HttpServletRequest req, HttpServletResponse resp)     { err404(req, resp); }
+            @Override
+            protected void doPut(HttpServletRequest req, HttpServletResponse resp)      { err404(req, resp); }
+            //protected void doDelete(HttpServletRequest req, HttpServletResponse resp)
+            //protected void doTrace(HttpServletRequest req, HttpServletResponse resp)
+            //protected void doOptions(HttpServletRequest req, HttpServletResponse resp)
+            private static void err404(HttpServletRequest req, HttpServletResponse response) {
+                try {
+                    response.sendError(404, "NOT FOUND");
+                } catch (IOException ex) {}
             }
         }
 
@@ -1035,13 +1076,18 @@ public class FusekiServer {
         /** Jetty server with one connector/port. */
         private static Server jettyServer(ServletContextHandler handler, int port) {
             Server server = new Server();
-            HttpConnectionFactory f1 = new HttpConnectionFactory();
+
+            // Missed when HTTPS. 
+            // TODO Share with jettyServer :: jettyServerHttps
+            HttpConfiguration httpConfig = new HttpConfiguration();
             // Some people do try very large operations ... really, should use POST.
-            f1.getHttpConfiguration().setRequestHeaderSize(512 * 1024);
-            f1.getHttpConfiguration().setOutputBufferSize(1024 * 1024);
+            httpConfig.setRequestHeaderSize(512 * 1024);
+            httpConfig.setOutputBufferSize(1024 * 1024);
             // Do not add "Server: Jetty(....) when not a development system.
             if ( ! Fuseki.outputJettyServerHeader )
-                f1.getHttpConfiguration().setSendServerVersion(false);
+                httpConfig.setSendServerVersion(false);
+           
+            HttpConnectionFactory f1 = new HttpConnectionFactory(httpConfig);
             ServerConnector connector = new ServerConnector(server, f1);
             connector.setPort(port);
             server.addConnector(connector);

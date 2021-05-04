@@ -25,15 +25,16 @@ import java.util.Objects;
 import org.apache.jena.atlas.io.IndentedWriter;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
+import org.apache.jena.riot.out.NodeFormatter;
+import org.apache.jena.shacl.engine.ShaclPaths;
 import org.apache.jena.shacl.engine.Target;
 import org.apache.jena.shacl.validation.Severity;
 import org.apache.jena.sparql.path.Path;
-import org.apache.jena.sparql.path.PathWriter;
 
 public class PropertyShape extends Shape {
 
     private final Path path;
-    public PropertyShape(Graph shapeGraph, Node shapeNode, boolean isDeactivated, Severity severity, List<Node> messages,
+    public PropertyShape(Graph shapeGraph, Node shapeNode, boolean isDeactivated, Severity severity, Collection<Node> messages,
                          Collection<Target> targets, Path path, List<Constraint> constraints, List<PropertyShape> propertyShapes) {
         super(shapeGraph, shapeNode, isDeactivated, severity, messages, targets, constraints, propertyShapes);
         this.path = Objects.requireNonNull(path, "path");
@@ -42,14 +43,19 @@ public class PropertyShape extends Shape {
     @Override
     public void visit(ShapeVisitor visitor) {  visitor.visit(this); }
 
+    @Override
+    public boolean isPropertyShape() {
+        return true;
+    }
+
     public Path getPath() {
         return path;
     }
 
     @Override
-    public void printHeader(IndentedWriter out) {
+    public void printHeader(IndentedWriter out, NodeFormatter nodeFmt) {
         out.print("PropertyShape ");
-        out.print(PathWriter.asString(path));
+        ShaclPaths.write(out, path, nodeFmt);
     }
 
     @Override

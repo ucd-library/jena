@@ -24,7 +24,7 @@ import java.util.concurrent.Callable;
 
 import org.apache.jena.atlas.lib.DateTimeUtils;
 import org.apache.jena.atlas.lib.InternalErrorException;
-import org.apache.jena.atlas.logging.Log;
+import org.apache.jena.atlas.logging.FmtLog;
 import org.apache.jena.fuseki.Fuseki;
 import org.apache.jena.fuseki.server.DataService;
 import org.slf4j.Logger;
@@ -46,7 +46,9 @@ public class AsyncTask implements Callable<Object>
     private final String taskId;
 
     private long requestId;
-
+    
+    private Boolean success = null;
+    
     /*package*/ AsyncTask(Callable<Object> callable,
                           AsyncPool pool,
                           String taskId,
@@ -74,8 +76,7 @@ public class AsyncTask implements Callable<Object>
 
     private void start() {
         if ( startPoint != null ) {
-            String msg = format("[Task %s] Async task has already been started", taskId);
-            Log.warn(Fuseki.serverLog, msg);
+            FmtLog.warn(Fuseki.serverLog, "[Task %s] Async task has already been started", taskId);
             throw new InternalErrorException("Finish has already been called ["+getTaskId()+"]");
         }
 
@@ -85,8 +86,7 @@ public class AsyncTask implements Callable<Object>
 
     public void finish() {
         if ( finishPoint != null ) {
-            String msg = format("[Task %s] Async task has already been finished", taskId);
-            Log.warn(Fuseki.serverLog, msg);
+            FmtLog.warn(Fuseki.serverLog, "[Task %s] Async task has already been finished", taskId);
             throw new InternalErrorException("Finish has already been called ["+getTaskId()+"]");
         }
         finishPoint = DateTimeUtils.nowAsXSDDateTimeString();
@@ -97,10 +97,15 @@ public class AsyncTask implements Callable<Object>
     public Object call() {
         try {
             start();
-            return callable.call();
+            Object result = callable.call();
+            this.success = true;
+            return result;
         }
-        catch (Exception ex) {
-            log.error("Async task threw an expection", ex);
+        catch (Throwable ex) {
+            // NB - Since the only place that constructs an AsyncTask is AsyncPool.submit() and that is already
+            // set up to handle uncaught exceptions and throw them onwards all we need to do here is set the
+            // success flag to false
+            this.success = false;
             return null;
         }
         finally {
@@ -115,6 +120,10 @@ public class AsyncTask implements Callable<Object>
 
     public String getFinishPoint() {
         return finishPoint;
+    }
+    
+    public Boolean wasSuccessful() {
+        return this.success;
     }
 }
 

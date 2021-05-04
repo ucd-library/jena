@@ -32,7 +32,7 @@ import org.apache.http.client.methods.HttpOptions;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.protocol.HttpContext;
 import org.apache.jena.atlas.lib.DateTimeUtils;
-import org.apache.jena.atlas.logging.Log;
+import org.apache.jena.atlas.logging.FmtLog;
 import org.apache.jena.atlas.web.HttpException;
 import org.apache.jena.fuseki.system.FusekiNetLib;
 import org.apache.jena.query.ARQ;
@@ -193,6 +193,12 @@ public class Fuseki {
     /** Instance of log for config server messages. */
     public static final Logger        configLog         = LoggerFactory.getLogger(configLogName);
 
+    public static final String        backupLogName     = PATH + ".Backup";
+    public static final Logger        backupLog         = LoggerFactory.getLogger(backupLogName);
+
+    public static final String        compactLogName    = PATH + ".Compact";
+    public static final Logger        compactLog        = LoggerFactory.getLogger(compactLogName);;
+
     /** Instance of log for config server messages.
      * This is the global default used to set attribute
      * in each server created.
@@ -227,10 +233,8 @@ public class Fuseki {
         webStreamManager.addLocator(new LocatorFTP());
     }
 
-    /** Default (and development) root of the Fuseki installation for fixed files. */
-    public static String DFT_FUSEKI_HOME = ".";
-    /** Default (and development) root of the varying files in this deployment. */
-    public static String DFT_FUSEKI_BASE = ".";
+    // HTTP response header inserted to aid tracking.
+    public static String FusekiRequestIdHeader = "Fuseki-Request-Id";
 
     private static boolean            initialized       = false;
 
@@ -331,15 +335,15 @@ public class Fuseki {
             HttpResponse response = httpClient.execute(request);
             // Fuseki does not send "Server" in release mode.
             // (best practice).
-            // All we can do is try for the "Fuseki-Request-ID"
-            String reqId = safeGetHeader(response, "Fuseki-Request-ID");
+            // We can do is try for the "Fuseki-Request-Id"
+            String reqId = safeGetHeader(response, FusekiRequestIdHeader);
             if ( reqId != null )
                 return true;
 
             // If returning "Server"
             String serverIdent = safeGetHeader(response, "Server");
             if ( serverIdent != null ) {
-                Log.debug(ARQ.getHttpRequestLogger(), "Server: "+serverIdent);
+                FmtLog.debug(ARQ.getHttpRequestLogger(), "Server: %s", serverIdent);
                 boolean isFuseki = serverIdent.startsWith("Apache Jena Fuseki");
                 if ( !isFuseki )
                     isFuseki = serverIdent.toLowerCase().contains("fuseki");

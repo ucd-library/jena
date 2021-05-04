@@ -30,21 +30,11 @@ import org.apache.jena.shacl.Shapes;
 import org.apache.jena.shacl.ValidationReport;
 import org.apache.jena.shacl.lib.ShLib;
 import org.apache.jena.shacl.validation.VR;
-import org.apache.jena.shacl.validation.ValidationProc;
 
 public class ShaclTest {
 
-//    public static void shaclTest(ShaclTestItem test) {
-//        shaclTest(test, false, true);
-//    }
-//
-    public static void shaclTest(ShaclTestItem test, boolean verbose) {
+    public static void shaclTest(ShaclTestItem test) {
         Graph shapesGraph = RDFDataMgr.loadGraph(test.getShapesGraph().getURI());
-        if ( false ) {
-            // This has one error report for testing/std/core/path/path-strange-002.ttl 
-            validateShapes(shapesGraph, test.origin());
-        }
-        
         try {
             Graph dataGraph;
             if ( test.getShapesGraph().getURI().equals(test.getDataGraph().getURI()) )
@@ -55,7 +45,7 @@ public class ShaclTest {
             boolean generalFailure = test.isGeneralFailure();
             if ( generalFailure ) {
                 try {
-                    ValidationReport testReport = ValidationProc.simpleValidation(shapesGraph, dataGraph, verbose);
+                    ValidationReport testReport = validate(ShaclValidator.get(), shapesGraph, dataGraph);
                     if ( testReport.conforms() )
                         fail("Expect a test failure: "+test.origin());
                 } catch (RuntimeException ex) {
@@ -68,7 +58,7 @@ public class ShaclTest {
             ValidationReport vReportGot;
 
             try {
-                vReportGot = ValidationProc.simpleValidation(shapesGraph, dataGraph, verbose);
+                vReportGot = validate(ShaclValidator.get(), shapesGraph, dataGraph);
             } catch (Throwable th) {
                 System.out.println("** Test : "+test.origin());
                 throw th;
@@ -105,8 +95,6 @@ public class ShaclTest {
             assertTrue("Reports differ : "+test.origin(), b1);
             assertTrue("Report models differ", b2);
 
-            // Compare reports.
-        //} catch (NotImplemented x) {
         } catch (RuntimeException ex) {
 //            ex.printStackTrace();
 //            System.err.println(ex.getMessage());
@@ -118,18 +106,9 @@ public class ShaclTest {
         }
     }
 
-    
-    private static Shapes shapes = Shapes.parse("std/shacl-shacl.ttl");
-    /** Validate the shapes graph 
-     * @param origin */ 
-    private static void validateShapes(Graph shapesGraph, String origin) {
-        ValidationReport report = ShaclValidator.get().validate(shapes, shapesGraph);
-        if ( ! report.conforms() ) {
-            System.out.println("Test: "+origin);
-            ShLib.printReport(report.getResource());
-        }
-        
+    private static ValidationReport validate(ShaclValidator validator, Graph shapesGraph, Graph dataGraph) {
+        if ( validator == null )
+            validator = ShaclValidator.get();
+        return validator.validate(shapesGraph, dataGraph);
     }
-
-
 }

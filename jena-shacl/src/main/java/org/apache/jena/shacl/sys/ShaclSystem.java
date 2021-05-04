@@ -18,11 +18,18 @@
 
 package org.apache.jena.shacl.sys;
 
+import org.apache.jena.riot.system.ErrorHandler;
+import org.apache.jena.riot.system.ErrorHandlerFactory;
 import org.apache.jena.shacl.ShaclValidator;
-import org.apache.jena.shacl.validation.ShaclSimpleValidator;
+import org.apache.jena.shacl.validation.ShaclPlainValidator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ShaclSystem {
-    private static ShaclValidator globalDefault = new ShaclSimpleValidator();
+    public static Logger systemShaclLogger = LoggerFactory.getLogger("SHACL"); 
+    public static ErrorHandler systemShaclErrorHandler = ErrorHandlerFactory.errorHandlerStd(systemShaclLogger);
+    
+    private static ShaclValidator globalDefault = new ShaclPlainValidator();
     
     /** Set the current system-wide {@link ShaclValidator}. */
     public static void set(ShaclValidator validator) { globalDefault = validator; }

@@ -27,6 +27,7 @@ import java.util.stream.Stream;
 import org.apache.jena.atlas.json.JSON;
 import org.apache.jena.atlas.web.WebLib;
 import org.apache.jena.fuseki.main.cmds.FusekiMain;
+import org.apache.jena.fuseki.system.FusekiLogging;
 import org.apache.jena.query.ResultSetFormatter;
 import org.apache.jena.rdfconnection.RDFConnection;
 import org.apache.jena.rdfconnection.RDFConnectionFactory;
@@ -40,6 +41,8 @@ public class TestFusekiMainCmd {
     // Fuseki Main server
     private FusekiServer server = null;
     private String serverURL = null;
+    
+    static { FusekiLogging.setLogging(); }
 
     private void server(String... cmdline) {
         int port = WebLib.choosePort();
@@ -81,5 +84,11 @@ public class TestFusekiMainCmd {
         String x = HttpOp.execHttpGetString(serverURL+"/$/stats");
         assertNotNull(x);
         JSON.parse(x);
+    }
+
+    @Test public void metrics_01() {
+        server("--mem", "--metrics", "/ds");
+        String x = HttpOp.execHttpGetString(serverURL+"/$/metrics");
+        assertNotNull(x);
     }
 }

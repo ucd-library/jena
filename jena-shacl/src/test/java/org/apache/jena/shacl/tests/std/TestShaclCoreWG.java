@@ -34,7 +34,7 @@ public class TestShaclCoreWG {
 
     @Parameters(name = "{0}")
     public static Collection<Object[]> data() throws Exception {
-        String manifest = "src/test/resources/std/core/manifest.ttl";
+        String manifest = "src/test/files/std/core/manifest.ttl";
         List<String> omitManifests = new ArrayList<>();
         return ShaclTests.junitParameters(manifest, omitManifests);
     }
@@ -46,5 +46,5 @@ public class TestShaclCoreWG {
     }
 
     @Test
-    public void test() { ShaclTest.shaclTest(test, false); }
+    public void test() { ShaclTest.shaclTest(test); }
 }

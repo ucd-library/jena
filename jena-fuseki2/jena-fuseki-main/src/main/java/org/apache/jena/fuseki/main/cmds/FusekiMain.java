@@ -29,6 +29,7 @@ import arq.cmdline.ModAssembler;
 import arq.cmdline.ModDatasetAssembler;
 import jena.cmd.ArgDecl;
 import jena.cmd.CmdException;
+import jena.cmd.TerminationException;
 import org.apache.jena.assembler.exceptions.AssemblerException;
 import org.apache.jena.atlas.json.JSON;
 import org.apache.jena.atlas.json.JsonObject;
@@ -84,8 +85,10 @@ public class FusekiMain extends CmdARQ {
     private static ArgDecl  argBase         = new ArgDecl(ArgDecl.HasValue, "base", "files");
 
     private static ArgDecl  argCORS         = new ArgDecl(ArgDecl.NoValue, "withCORS", "cors", "CORS");
+    private static ArgDecl  argNoCORS         = new ArgDecl(ArgDecl.NoValue, "noCORS", "no-cors");
     private static ArgDecl  argWithPing     = new ArgDecl(ArgDecl.NoValue, "withPing", "ping");
     private static ArgDecl  argWithStats    = new ArgDecl(ArgDecl.NoValue, "withStats", "stats");
+    private static ArgDecl  argWithMetrics  = new ArgDecl(ArgDecl.NoValue,  "withMetrics", "metrics");
 
     private static ArgDecl  argAuth         = new ArgDecl(ArgDecl.HasValue, "auth");
 
@@ -165,11 +168,13 @@ public class FusekiMain extends CmdARQ {
         add(argHttpsPort, "--httpsPort=NUM", "https port (default port is 3043)");
 
         add(argPasswdFile, "--passwd=FILE", "Password file");
-        add(argCORS, "--cors", "Enable CORS");
+        add(argCORS); //, "--cors"); "Enable CORS");
+        add(argNoCORS, "--no-cors", "Disable CORS");
         // put in the configuration file
 //            add(argRealm, "--realm=REALM", "Realm name");
         add(argWithPing,    "--ping",   "Enable /$/ping");
         add(argWithStats,   "--stats",  "Enable /$/stats");
+        add(argWithMetrics, "--metrics",  "Enable /$/metrics");
 
         super.modVersion.addClass(Fuseki.class);
     }
@@ -248,7 +253,7 @@ public class FusekiMain extends CmdARQ {
 
         // Which TDB to use to create a command line TDB database.
         useTDB2 = contains(argTDB2mode);
-        String tag = useTDB2 ? "TDB2" : "TDB";
+        String tag = useTDB2 ? "TDB2" : "TDB1";
 
         if ( allowEmpty ) {
             serverConfig.empty = true;
@@ -317,12 +322,8 @@ public class FusekiMain extends CmdARQ {
         }
 
         if ( contains(argTDB) ) {
-            String dir = getValue(argTDB);
-            serverConfig.datasetDescription = tag+" dataset: "+dir;
-            serverConfig.dsg =
-                useTDB2
-                ? DatabaseMgr.connectDatasetGraph(dir)
-                    : TDBFactory.createDatasetGraph(dir);
+            String directory = getValue(argTDB);
+            DSGSetup.setupTDB(directory, useTDB2, serverConfig);
         }
 
         if ( contains(ModAssembler.assemblerDescDecl) ) {
@@ -398,9 +399,11 @@ public class FusekiMain extends CmdARQ {
             serverConfig.authScheme = AuthScheme.scheme(schemeStr);
         }
 
-        serverConfig.withCORS = contains(argCORS);
+        // 2020-10: Ignore argCORS - CORS is now on by default in Fuseki Main cmd  
+        serverConfig.withCORS = ! contains(argNoCORS);
         serverConfig.withPing = contains(argWithPing);
         serverConfig.withStats = contains(argWithStats);
+        serverConfig.withMetrics = contains(argWithMetrics);
 
 //            if ( contains(argGZip) ) {
 //                if ( !hasValueOfTrue(argGZip) && !hasValueOfFalse(argGZip) )
@@ -439,11 +442,12 @@ public class FusekiMain extends CmdARQ {
             server.join();
             System.exit(0);
         }
-        catch (AssemblerException ex) {
+        catch (AssemblerException | FusekiException  ex) {
             if ( ex.getCause() != null )
                 System.err.println(ex.getCause().getMessage());
             else
                 System.err.println(ex.getMessage());
+            throw new TerminationException(1);
         }
     }
 
@@ -510,6 +514,9 @@ public class FusekiMain extends CmdARQ {
 
         if ( serverConfig.withStats )
             builder.enableStats(true);
+
+        if ( serverConfig.withMetrics )
+            builder.enableMetrics(true);
 
         return builder.build();
     }
