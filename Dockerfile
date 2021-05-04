@@ -1,4 +1,4 @@
-ARG FUSEKI_VERSION=3.16.0
+ARG FUSEKI_VERSION=3.17.0
 
 FROM maven:3-openjdk-8 as build
 
@@ -40,6 +40,9 @@ COPY ./jena-fuseki2/jena-fuseki-fulljar/pom.xml ./jena-fuseki-fulljar/pom.xml
 
 RUN mkdir ./apache-jena-fuseki
 COPY ./jena-fuseki2/apache-jena-fuseki/pom.xml ./apache-jena-fuseki/pom.xml
+
+RUN mkdir ./jena-fuseki-docker
+COPY ./jena-fuseki2/jena-fuseki-docker/pom.xml ./jena-fuseki-docker/pom.xml
 
 COPY ./jena-fuseki2/pom.xml ./pom.xml
 
@@ -225,19 +228,27 @@ RUN mkdir -p $FUSEKI_HOME/lib
 WORKDIR $FUSEKI_HOME
 
 # Install JENA Client Data
-COPY --from=build /tmp/apache-jena/target/apache-jena-${FUSEKI_VERSION}-SNAPSHOT.tar.gz apache-jena.tar.gz
+# COPY --from=build /tmp/apache-jena/target/apache-jena-${FUSEKI_VERSION}-SNAPSHOT.tar.gz apache-jena.tar.gz
+COPY --from=build /tmp/apache-jena/target/apache-jena-${FUSEKI_VERSION}.tar.gz apache-jena.tar.gz
 RUN tar zxf apache-jena.tar.gz && mkdir /jena && \
     mv apache-jena*/* /jena && rm -f apache-jena.tar.gz && \
     cd /jena && rm -rf *javadoc* *src* bat
 
 
-COPY --from=build /tmp/jena-fuseki2/apache-jena-fuseki/target/apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT.tar.gz apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT.tar.gz
-COPY --from=build /tmp/jena-fuseki2/jena-fuseki-core/target/jena-fuseki-core-${FUSEKI_VERSION}-SNAPSHOT.jar lib/jena-fuseki-core-${FUSEKI_VERSION}-SNAPSHOT.jar
-COPY --from=build /tmp/jena-fuseki2/jena-fuseki-webapp/target/jena-fuseki-webapp-${FUSEKI_VERSION}-SNAPSHOT.jar lib/jena-fuseki-webapp-${FUSEKI_VERSION}-SNAPSHOT.jar
+# COPY --from=build /tmp/jena-fuseki2/apache-jena-fuseki/target/apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT.tar.gz apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT.tar.gz
+# COPY --from=build /tmp/jena-fuseki2/jena-fuseki-core/target/jena-fuseki-core-${FUSEKI_VERSION}-SNAPSHOT.jar lib/jena-fuseki-core-${FUSEKI_VERSION}-SNAPSHOT.jar
+# COPY --from=build /tmp/jena-fuseki2/jena-fuseki-webapp/target/jena-fuseki-webapp-${FUSEKI_VERSION}-SNAPSHOT.jar lib/jena-fuseki-webapp-${FUSEKI_VERSION}-SNAPSHOT.jar
+COPY --from=build /tmp/jena-fuseki2/apache-jena-fuseki/target/apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz
+COPY --from=build /tmp/jena-fuseki2/jena-fuseki-core/target/jena-fuseki-core-${FUSEKI_VERSION}.jar lib/jena-fuseki-core-${FUSEKI_VERSION}.jar
+COPY --from=build /tmp/jena-fuseki2/jena-fuseki-webapp/target/jena-fuseki-webapp-${FUSEKI_VERSION}.jar lib/jena-fuseki-webapp-${FUSEKI_VERSION}.jar
 
-RUN tar zxf apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT.tar.gz
-RUN mv apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT/* .
-RUN rm -rf apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT*
+
+# RUN tar zxf apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT.tar.gz
+# RUN mv apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT/* .
+# RUN rm -rf apache-jena-fuseki-${FUSEKI_VERSION}-SNAPSHOT*
+RUN tar zxf apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz
+RUN mv apache-jena-fuseki-${FUSEKI_VERSION}/* .
+RUN rm -rf apache-jena-fuseki-${FUSEKI_VERSION}*
 RUN rm -rf fuseki.war && chmod 755 fuseki-server
 
 WORKDIR /tmp

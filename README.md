@@ -97,7 +97,7 @@ Make sure required jars are in `$JENA_BASE/extra` directory.
 This custom build of Fuseki can be made using the local Docker file.  ex:
 
 ```
-docker build -t docker.io/ucdlib/jena-fuseki-eb:latest .
+docker build -t gcr.io/ucdlib-pubreg/jena-fuseki-eb:latest .
 ```
 
 However it is recommended to use Google Cloud Build system.  Now builds can be submitted by using `./submit-build.sh` or by pushing a new tag to the GitHub repository.
